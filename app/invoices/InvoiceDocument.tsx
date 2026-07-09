@@ -1,0 +1,178 @@
+"use client";
+import { fmt } from "@/lib/util";
+
+export function publicInvoiceUrl(token: string) {
+  if (typeof window === "undefined") return `/i/${token}`;
+  return `${window.location.origin}/i/${token}`;
+}
+
+export function buildWhatsAppText(invoice: any, ctx: {
+  branchName: string; programName: string;
+  company: any; bank: any; terms: string; shareUrl: string;
+}) {
+  const paid = invoice.status === "Paid";
+  const header = paid ? `Receipt from ${ctx.company.name || "ClickRobot Laos"}` : `Invoice from ${ctx.company.name || "ClickRobot Laos"}`;
+  const bankLines = ctx.bank?.bank_name ? `
+How to pay:
+Bank: ${ctx.bank.bank_name}
+Account name: ${ctx.bank.account_name || ""}
+Account no: ${ctx.bank.account_no || ""}` : "";
+  const terms = ctx.terms && !paid ? `\n\n${ctx.terms}` : "";
+  return `${header}
+
+Invoice #: ${invoice.invoice_no}
+Date: ${invoice.date}${paid ? "" : `\nDue: ${invoice.due_date}`}
+Branch: ${ctx.branchName}
+
+Student: ${invoice.student_name}
+Parent: ${invoice.parent_name || "—"}
+Program: ${ctx.programName}
+Package: ${invoice.package || "—"}${invoice.sessions ? ` (${invoice.sessions} sessions)` : ""}
+
+Amount: ${fmt(invoice.amount, invoice.currency)} ${invoice.currency}
+Equivalent: ${fmt(invoice.amount_lak)} LAK
+
+Status: ${invoice.status}${paid && invoice.payment_method ? ` (${invoice.payment_method})` : ""}${bankLines}${terms}
+
+View / print: ${ctx.shareUrl}`;
+}
+
+export function InvoiceDocument({ invoice, branchName, programName, company, bank, terms, paid }: {
+  invoice: any; branchName: string; programName: string;
+  company: any; bank: any; terms: string; paid: boolean;
+}) {
+  return (
+    <>
+      <style>{`
+        .doc { background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; padding:28px; max-width:780px; margin:0 auto; position:relative; }
+        .doc h1 { font-size:22px; margin-bottom:2px }
+        .doc .muted { color:#666; font-size:13px }
+        .doc .row { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap }
+        .doc .row .col { flex:1; min-width:220px }
+        .doc .title { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#182136 }
+        .doc table { width:100%; border-collapse:collapse; margin-top:18px }
+        .doc th { text-align:left; background:#F8FAFD; padding:10px 12px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#5A6478; border-bottom:1px solid #eee }
+        .doc td { padding:12px; border-bottom:1px solid #f0f0f0; vertical-align:top }
+        .doc td.num { text-align:right; font-variant-numeric:tabular-nums }
+        .doc .total { font-size:18px; font-weight:700 }
+        .doc .stamp {
+          position:absolute; top:80px; right:40px;
+          border:5px solid #17804C; color:#17804C;
+          font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:38px;
+          padding:6px 24px; border-radius:8px; transform:rotate(-14deg);
+          opacity:.85; letter-spacing:0.06em; pointer-events:none;
+        }
+        .doc .sig { display:flex; gap:24px; margin-top:36px }
+        .doc .sig div { flex:1; text-align:center; font-size:13px; color:#444 }
+        .doc .sig div span { display:block; border-top:1.5px solid #999; margin-top:38px; padding-top:6px }
+        .doc .payinfo { background:#F5F7FB; border:1px solid #E3E7EE; border-radius:8px; padding:12px; margin-top:16px; font-size:13.5px }
+        .doc .payinfo b { color:#182136 }
+        .doc .qr { text-align:right }
+        .doc .qr img { max-width:140px; border:1px solid #E3E7EE; border-radius:6px; padding:4px; background:#fff }
+        @media print {
+          body * { visibility:hidden !important }
+          .doc, .doc * { visibility:visible !important }
+          .doc { border:none; box-shadow:none; margin:0; padding:20px; max-width:none }
+          .noprint { display:none !important }
+        }
+      `}</style>
+
+      <div className="doc">
+        {paid && <div className="stamp">PAID</div>}
+
+        <div className="row">
+          <div className="col">
+            {company.logo_url ? <img src={company.logo_url} alt="" style={{ maxHeight: 60, marginBottom: 8 }} /> : null}
+            <h1 style={{ margin: 0 }}>{company.name || "ClickRobot Laos"}</h1>
+            <div className="muted">
+              {company.address && <>{company.address}<br /></>}
+              {company.phone && <>Phone: {company.phone}<br /></>}
+              {company.email && <>Email: {company.email}<br /></>}
+              {company.tax_id && <>Tax ID: {company.tax_id}</>}
+            </div>
+          </div>
+          <div className="col" style={{ textAlign: "right" }}>
+            <div className="title">{paid ? "Receipt" : "Invoice"}</div>
+            <div style={{ marginTop: 8, fontSize: 14 }}>
+              <div><b>{invoice.invoice_no}</b></div>
+              <div>Date: {invoice.date}</div>
+              {!paid && <div>Due: {invoice.due_date}</div>}
+              {paid && invoice.paid_at && <div>Paid: {new Date(invoice.paid_at).toLocaleDateString()}</div>}
+              <div>Branch: {branchName}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="row" style={{ marginTop: 22 }}>
+          <div className="col">
+            <div className="muted" style={{ marginBottom: 4, fontWeight: 600 }}>Bill to</div>
+            <div><b>{invoice.parent_name || invoice.student_name}</b></div>
+            {invoice.parent_name && <div className="muted">Student: {invoice.student_name}</div>}
+            {invoice.phone && <div className="muted">Phone: {invoice.phone}</div>}
+          </div>
+          <div className="col">
+            <div className="muted" style={{ marginBottom: 4, fontWeight: 600 }}>Enrolment</div>
+            <div><b>{programName}</b></div>
+            {invoice.package && <div className="muted">{invoice.package}{invoice.sessions ? ` · ${invoice.sessions} sessions` : ""}</div>}
+            <div className="muted">Type: {invoice.payment_type}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead><tr>
+            <th>Description</th>
+            <th style={{ textAlign: "right" }}>Amount</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>
+                <b>{programName}</b><br />
+                <span className="muted">{invoice.package || ""}{invoice.sessions ? ` · ${invoice.sessions} sessions` : ""}</span>
+                {invoice.notes ? <><br /><span className="muted">Note: {invoice.notes}</span></> : null}
+              </td>
+              <td className="num">{fmt(invoice.amount, invoice.currency)} {invoice.currency}</td>
+            </tr>
+            <tr>
+              <td className="total" style={{ textAlign: "right" }}>Total</td>
+              <td className="num total">{fmt(invoice.amount, invoice.currency)} {invoice.currency}</td>
+            </tr>
+            {invoice.currency !== "LAK" && (
+              <tr>
+                <td className="muted" style={{ textAlign: "right" }}>Equivalent in LAK (rate {fmt(invoice.rate_to_lak)})</td>
+                <td className="num muted">{fmt(invoice.amount_lak)} LAK</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {!paid && (bank?.bank_name || bank?.qr_url) && (
+          <div className="payinfo">
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "space-between" }}>
+              <div>
+                <b>How to pay</b><br />
+                {bank.bank_name && <>Bank: {bank.bank_name}<br /></>}
+                {bank.account_name && <>Account name: {bank.account_name}<br /></>}
+                {bank.account_no && <>Account no: {bank.account_no}<br /></>}
+              </div>
+              {bank.qr_url && (
+                <div className="qr"><img src={bank.qr_url} alt="Payment QR" /></div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!paid && terms && <div className="muted" style={{ marginTop: 16, fontSize: 13 }}>{terms}</div>}
+        {paid && invoice.payment_method && <div className="muted" style={{ marginTop: 16, fontSize: 13 }}>Payment method: {invoice.payment_method}</div>}
+
+        <div className="sig">
+          <div><span>{paid ? "Received by (staff)" : "Prepared by"}</span></div>
+          <div><span>{paid ? "Parent signature" : "Parent signature"}</span></div>
+        </div>
+      </div>
+
+      <div className="btnrow noprint" style={{ justifyContent: "center" }}>
+        <button className="btn" onClick={() => window.print()}>Print / Export PDF</button>
+      </div>
+    </>
+  );
+}
