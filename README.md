@@ -1,3 +1,4 @@
+# ClickRobot Records
 # Self-Edit Lock
 
 When a co-admin (or any non-CEO user) edits their OWN profile, the following fields become **read-only**:
