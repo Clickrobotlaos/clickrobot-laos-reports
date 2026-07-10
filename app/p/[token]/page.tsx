@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { fmt } from "@/lib/util";
+import { QRCodeSVG } from "qrcode.react";
 
 type Pkg = {
   package_id: string; public_token: string;
@@ -73,13 +74,24 @@ export default function ParentPortalPage() {
 
       <div className="pp-hero">
         <div className="pp-brand">
-          <span className="pp-logo">🤖</span>
+          {company.logo_url ? (
+            <img src={company.logo_url} alt={company.name || "logo"} className="pp-logo-img"
+                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          ) : (
+            <span className="pp-logo">🤖</span>
+          )}
           <span>{company.name || "ClickRobot Laos"}</span>
         </div>
         <div className="pp-title">Parent Portal</div>
       </div>
 
       <div className="pp-card pp-child">
+        {/* QR Code — first thing parent sees */}
+        <div style={{ textAlign: "center", marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #f0f0f0" }}>
+          <QRCodeSVG value={typeof window !== "undefined" ? window.location.href : ""} size={150} level="M" includeMargin
+            style={{ borderRadius: 12 }} />
+          <div style={{ fontSize: 12, color: "#888", marginTop: 6 }}>Show this QR to teacher for attendance</div>
+        </div>
         {pkg.photo_url ? (
           <img src={pkg.photo_url} alt={pkg.student_name} className="pp-photo" />
         ) : (
@@ -268,6 +280,7 @@ const portalCss = `
 .pp-hero { text-align: center; padding: 16px 0 20px; }
 .pp-brand { display: inline-flex; align-items: center; gap: 8px; background: white; padding: 8px 14px; border-radius: 999px; font-weight: 700; box-shadow: 0 2px 8px rgba(139,92,246,0.15); font-size: 14px; }
 .pp-logo { font-size: 20px; }
+.pp-logo-img { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; }
 .pp-title { margin-top: 10px; font-size: 22px; font-weight: 800; background: linear-gradient(90deg, var(--pink), var(--purple)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 .pp-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }

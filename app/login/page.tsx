@@ -61,6 +61,11 @@ export default function LoginPage() {
         </div>
       </form>
 
+      <div style={{ marginTop: 20, textAlign: "center", fontSize: 11, color: "var(--ink2)" }}>
+        © {new Date().getFullYear()} ClickRobot Laos. All rights reserved.<br/>
+        Developed by Vixaty Phompanya
+      </div>
+
       <style>{`
         .loginwrap { display: grid; place-items: center; min-height: 100vh; padding: 20px; background: linear-gradient(180deg, #F5F7FB 0%, #E8ECF3 100%); }
         .loginbox { width: 100%; max-width: 400px; background: white; padding: 28px 24px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }

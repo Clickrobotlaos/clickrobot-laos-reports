@@ -16,6 +16,8 @@ const EMOJI: Record<string, string> = {
   badge: "👤",
   pay: "💳",
   gear: "⚙️",
+  import: "📥",
+  scan: "📷",
 };
 
 export function Icon({ n }: { n: string }) {

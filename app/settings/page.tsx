@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Shell } from "@/components/shell";
 import { Field } from "@/components/ui";
 import { collectAllData, collectMonthData, downloadAllAsCsv, wipeAllFinancialData, deepReset, nuclearReset } from "@/lib/backup";
+import { THEMES, applyTheme } from "@/lib/theme";
 
 export default function SettingsPage() {
   const app = useApp();
@@ -20,6 +21,7 @@ function SettingsView() {
   return (
     <div>
       <div className="sectionhead"><h2>Settings</h2></div>
+      <ThemePanel />
       <CompanyPanel />
       <BankPanel />
       <TermsPanel />
@@ -29,6 +31,45 @@ function SettingsView() {
       <WhatsAppPanel />
       <CloseMonthPanel />
       <DangerZonePanel />
+    </div>
+  );
+}
+
+function ThemePanel() {
+  const [current, setCurrent] = useState("blue");
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "theme").maybeSingle().then(({ data }) => {
+      if (data?.value) setCurrent(String(data.value).replace(/"/g, ""));
+    });
+  }, []);
+  async function pick(key: string) {
+    setCurrent(key);
+    applyTheme(key);
+    const { error } = await supabase.from("settings").upsert({ key: "theme", value: JSON.stringify(key) });
+    setMsg(error ? error.message : "Theme saved — applies to everyone.");
+    setTimeout(() => setMsg(""), 2500);
+  }
+  return (
+    <div className="panel">
+      <h3>🎨 Color theme</h3>
+      <div className="hint" style={{ marginBottom: 12 }}>Pick a color theme for the whole app. Applies to all users.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+        {Object.entries(THEMES).map(([key, t]) => (
+          <button key={key} onClick={() => pick(key)}
+            style={{
+              padding: "14px 10px", borderRadius: 12, cursor: "pointer",
+              border: current === key ? `3px solid ${t.accent}` : "1.5px solid var(--line)",
+              background: current === key ? t.accent2 : "white",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            }}>
+            <div style={{ width: 36, height: 36, borderRadius: 18, background: t.accent }} />
+            <span style={{ fontSize: 13, fontWeight: current === key ? 700 : 500 }}>{t.emoji} {t.label}</span>
+            {current === key && <span style={{ fontSize: 11, color: t.accent, fontWeight: 700 }}>✓ Active</span>}
+          </button>
+        ))}
+      </div>
+      {msg && <div className="banner ok" style={{ marginTop: 10 }}>{msg}</div>}
     </div>
   );
 }

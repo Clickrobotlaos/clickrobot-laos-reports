@@ -4,10 +4,12 @@ import { useRouter, usePathname } from "next/navigation";
 import { useApp } from "@/lib/app-context";
 import { Brand, Icon } from "./ui";
 import { ROLE_LABELS, PERMS } from "@/lib/util";
+import { useTheme } from "@/lib/theme";
 
 const NAV = [
   { k: "/",           label: "Home",       icon: "home" },
   { k: "/attendance", label: "Attendance", icon: "check" },
+  { k: "/scan",       label: "Quick Scan", icon: "scan" },
   { k: "/classes",    label: "Classes",    icon: "calendar" },
   { k: "/students",   label: "Students",   icon: "users" },
   { k: "/reports",    label: "Reports",    icon: "report" },
@@ -15,6 +17,7 @@ const NAV = [
   { k: "/records",    label: "Records",    icon: "coins" },
   { k: "/staff",      label: "Staff",      icon: "badge" },
   { k: "/payroll",    label: "Payroll",    icon: "pay" },
+  { k: "/import",     label: "Import",     icon: "import" },
   { k: "/profile",    label: "My profile", icon: "badge" },
   { k: "/settings",   label: "Settings",   icon: "gear" },
 ];
@@ -23,6 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const app = useApp();
   const router = useRouter();
   const path = usePathname();
+  useTheme();
   if (app.loading) return <div style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>Loading…</div>;
   if (!app.userId) return null;
 
@@ -30,8 +34,10 @@ export function Shell({ children }: { children: ReactNode }) {
   const visibleNav = NAV.filter((n) => {
     if (n.k === "/settings") return can.settings;
     if (n.k === "/staff") return can.staff;
+    if (n.k === "/scan") return can.attendance;
     if (n.k === "/classes") return app.role === "admin" || app.role === "manager";
     if (n.k === "/payroll") return can.payroll;
+    if (n.k === "/import") return can.addRecords || app.role === "admin" || app.role === "co_admin";
     if (n.k === "/invoices") return can.addRecords || can.approve || app.role === "admin";
     if (n.k === "/records") return can.addRecords || can.approve || app.role === "admin";
     if (n.k === "/reports") return can.submit || can.approve || app.role === "admin";
@@ -54,6 +60,13 @@ export function Shell({ children }: { children: ReactNode }) {
             <Icon n={n.icon} />{n.label}
           </button>
         ))}
+        <div className="side-credit">
+          © {new Date().getFullYear()} ClickRobot Laos<br/>
+          Developed by Vixaty Phompanya
+        </div>
+        <style>{`
+          .side-credit { margin-top: auto; padding: 12px 16px; font-size: 10.5px; color: var(--ink2); opacity: 0.6; line-height: 1.5; border-top: 1px solid var(--line); }
+        `}</style>
       </nav>
       <main className="main">
         <div className="topbar">

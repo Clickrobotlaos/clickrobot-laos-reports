@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { fmt } from "@/lib/util";
 
 export function publicInvoiceUrl(token: string) {
@@ -41,9 +42,8 @@ export function InvoiceDocument({ invoice, branchName, programName, company, ban
   invoice: any; branchName: string; programName: string;
   company: any; bank: any; terms: string; paid: boolean;
 }) {
-  return (
-    <>
-      <style>{`
+  const [copies, setCopies] = useState(1);
+  const css = `
         .doc { background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; padding:28px; max-width:780px; margin:0 auto; position:relative; }
         .doc h1 { font-size:22px; margin-bottom:2px }
         .doc .muted { color:#666; font-size:13px }
@@ -71,12 +71,18 @@ export function InvoiceDocument({ invoice, branchName, programName, company, ban
         .doc .qr img { max-width:140px; border:1px solid #E3E7EE; border-radius:6px; padding:4px; background:#fff }
         @media print {
           body * { visibility:hidden !important }
-          .doc, .doc * { visibility:visible !important }
-          .doc { border:none; box-shadow:none; margin:0; padding:20px; max-width:none }
+          .printarea, .printarea * { visibility:visible !important }
+          .printarea { position:absolute; top:0; left:0; width:100% }
+          .doc { border:none; box-shadow:none; margin:0 auto; padding:16px; max-width:none; page-break-inside:avoid }
+          .printarea.copies-2 .doc { zoom:0.62 }
+          .printarea.copies-3 .doc { zoom:0.42 }
+          .cutline { display:block !important; border-top:2px dashed #999; margin:8px 0; text-align:center; color:#999; font-size:10px }
           .noprint { display:none !important }
         }
-      `}</style>
+        .cutline { display:none }
+      `;
 
+  const docBody = (
       <div className="doc">
         {paid && <div className="stamp">PAID</div>}
 
@@ -169,9 +175,33 @@ export function InvoiceDocument({ invoice, branchName, programName, company, ban
           <div><span>{paid ? "Parent signature" : "Parent signature"}</span></div>
         </div>
       </div>
+  );
 
-      <div className="btnrow noprint" style={{ justifyContent: "center" }}>
-        <button className="btn" onClick={() => window.print()}>Print / Export PDF</button>
+  return (
+    <>
+      <style>{css}</style>
+
+      <div className={"printarea copies-" + copies}>
+        {docBody}
+        {copies >= 2 && <>
+          <div className="cutline">✂ — — — — — — — — — — — — — — — — — — — —</div>
+          {docBody}
+        </>}
+        {copies >= 3 && <>
+          <div className="cutline">✂ — — — — — — — — — — — — — — — — — — — —</div>
+          {docBody}
+        </>}
+      </div>
+
+      <div className="btnrow noprint" style={{ justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "var(--ink2)" }}>Copies per page:</span>
+          {[1, 2, 3].map((n) => (
+            <button key={n} className={"btn sm " + (copies === n ? "" : "ghost")} onClick={() => setCopies(n)}
+              style={{ minWidth: 42 }}>{n}</button>
+          ))}
+        </div>
+        <button className="btn" onClick={() => window.print()}>🖨️ Print / Export PDF</button>
       </div>
     </>
   );
