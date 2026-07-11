@@ -70,16 +70,31 @@ export function InvoiceDocument({ invoice, branchName, programName, company, ban
         .doc .qr { text-align:right }
         .doc .qr img { max-width:140px; border:1px solid #E3E7EE; border-radius:6px; padding:4px; background:#fff }
         @media print {
+          @page { size: A4 portrait; margin: 8mm }
           body * { visibility:hidden !important }
           .printarea, .printarea * { visibility:visible !important }
           .printarea { position:absolute; top:0; left:0; width:100% }
-          .doc { border:none; box-shadow:none; margin:0 auto; padding:16px; max-width:none; page-break-inside:avoid }
-          .printarea.copies-2 .doc { zoom:0.62 }
-          .printarea.copies-3 .doc { zoom:0.42 }
-          .cutline { display:block !important; border-top:2px dashed #999; margin:8px 0; text-align:center; color:#999; font-size:10px }
+          .doc { border:none; box-shadow:none; margin:0 auto; max-width:none; page-break-inside:avoid }
+
+          /* 1 copy — full size */
+          .printarea.copies-1 .doc { padding:16px }
+
+          /* 2 copies — each scaled to fit half of A4 (~138mm each) */
+          .printarea.copies-2 { display:flex; flex-direction:column }
+          .printarea.copies-2 .copywrap { height:135mm; overflow:hidden; display:flex; align-items:flex-start; justify-content:center }
+          .printarea.copies-2 .doc { transform:scale(0.60); transform-origin:top center; padding:10px; width:166% }
+
+          /* 3 copies — each scaled to fit a third of A4 (~90mm each) */
+          .printarea.copies-3 { display:flex; flex-direction:column }
+          .printarea.copies-3 .copywrap { height:89mm; overflow:hidden; display:flex; align-items:flex-start; justify-content:center }
+          .printarea.copies-3 .doc { transform:scale(0.40); transform-origin:top center; padding:6px; width:250% }
+
+          .cutline { display:block !important; border-top:2px dashed #999; margin:0; text-align:center; color:#999; font-size:9px; line-height:1; height:4mm }
           .noprint { display:none !important }
         }
         .cutline { display:none }
+        .copywrap { display:contents }
+        @media print { .copywrap { display:flex } .printarea.copies-1 .copywrap { display:block; height:auto } }
       `;
 
   const docBody = (
@@ -182,14 +197,14 @@ export function InvoiceDocument({ invoice, branchName, programName, company, ban
       <style>{css}</style>
 
       <div className={"printarea copies-" + copies}>
-        {docBody}
+        <div className="copywrap">{docBody}</div>
         {copies >= 2 && <>
           <div className="cutline">✂ — — — — — — — — — — — — — — — — — — — —</div>
-          {docBody}
+          <div className="copywrap">{docBody}</div>
         </>}
         {copies >= 3 && <>
           <div className="cutline">✂ — — — — — — — — — — — — — — — — — — — —</div>
-          {docBody}
+          <div className="copywrap">{docBody}</div>
         </>}
       </div>
 
