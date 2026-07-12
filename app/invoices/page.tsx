@@ -117,6 +117,28 @@ function InvoiceForm({ onDone, onCancel }: { onDone: (id?: string) => void; onCa
 
   // Student ID system
   const [idMode, setIdMode] = useState<"existing" | "new">("existing");
+  const [leadId, setLeadId] = useState<string | null>(null);
+
+  // Lead conversion prefill (set by Leads page "Convert to student")
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem("lead_prefill");
+    if (!raw) return;
+    try {
+      const p = JSON.parse(raw);
+      setIdMode("new");
+      setLeadId(p.lead_id || null);
+      setF((prev: any) => ({
+        ...prev,
+        student_name: p.student_name || prev.student_name,
+        parent_name: p.parent_name || prev.parent_name,
+        phone: p.phone || prev.phone,
+        program_id: p.program_id || prev.program_id,
+        branch_id: p.branch_id || prev.branch_id,
+      }));
+    } catch (e) {}
+    window.localStorage.removeItem("lead_prefill");
+  }, []);
   const [idLookup, setIdLookup] = useState("");
   const [idStatus, setIdStatus] = useState<"" | "found" | "notfound" | "searching">("");
   const [newStudentId, setNewStudentId] = useState("");
@@ -243,6 +265,17 @@ function InvoiceForm({ onDone, onCancel }: { onDone: (id?: string) => void; onCa
     }).select("id").single();
     setBusy(false);
     if (error) { setErr(error.message); return; }
+    // If this invoice came from a lead conversion, mark the lead as Registered
+    if (leadId) {
+      await supabase.from("leads").update({
+        status: "Registered", registered_at: new Date().toISOString(),
+      }).eq("id", leadId);
+      await supabase.from("lead_activities").insert({
+        lead_id: leadId, action: "Registered",
+        note: `Invoice ${invoice_no} created`,
+        by_user: app.userId, by_name: app.userName,
+      });
+    }
     onDone(data?.id);
   }
 

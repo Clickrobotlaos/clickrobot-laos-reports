@@ -27,23 +27,26 @@ function Dashboard() {
   const [payroll, setPayroll] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [todayAtt, setTodayAtt] = useState<any[]>([]);
+  const [todayLeads, setTodayLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const yearStart = `${y}-01-01`;
-      const [i, e, s, r, p, pk, att] = await Promise.all([
+      const [i, e, s, r, p, pk, att, lds] = await Promise.all([
         supabase.from("income_records").select("date,branch_id,program_id,amount,currency,amount_lak,unpaid_lak").gte("date", yearStart),
         supabase.from("expense_records").select("date,branch_id,category,amount_lak").gte("date", yearStart),
         supabase.from("student_records").select("date,branch_id,student_type,program_id").gte("date", yearStart),
         supabase.from("daily_reports").select("id,date,branch_id,status,submitted_by").gte("date", `${y}-01-01`),
         supabase.from("salary_payroll").select("month,status,net_lak").eq("month", m),
-        supabase.from("student_packages").select("id,active,sessions_total,sessions_used,student_name,phone,branch_id,program_id").eq("active", true),
+        supabase.from("student_packages").select("id,active,sessions_total,sessions_used,student_name,parent_name,phone,branch_id,program_id,date_of_birth").eq("active", true),
         supabase.from("attendance").select("id,status").eq("date", t),
+        supabase.from("leads").select("*").or(`created_at.gte.${t}T00:00:00,trial_date.eq.${t}`),
       ]);
       setIncome(i.data || []); setExpenses(e.data || []);
       setStudents(s.data || []); setReports(r.data || []);
       setPayroll(p.data || []); setPackages(pk.data || []); setTodayAtt(att.data || []);
+      setTodayLeads(lds.data || []);
       setLoading(false);
     })();
   }, [y, m, t]);
@@ -148,6 +151,119 @@ function Dashboard() {
         <div className="card"><div className="lbl">Pending approvals</div><div className="val">{pendingReports}</div><div className="sub">daily reports</div></div>
         <div className="card"><div className="lbl">Salary payout ({m})</div><div className="val">{M(payPaidLak)}</div><div className="sub">{payPending} pending</div></div>
       </div>
+
+      {/* 🔔 Renewal alerts — active students with 2 or fewer sessions left */}
+      {(() => {
+        const lowBal = packages.filter((p: any) => {
+          const left = Math.max(0, (p.sessions_total || 0) - (p.sessions_used || 0));
+          return left <= 2;
+        }).map((p: any) => ({ ...p, left: Math.max(0, (p.sessions_total || 0) - (p.sessions_used || 0)) }))
+          .sort((a: any, b: any) => a.left - b.left);
+        if (lowBal.length === 0) return null;
+        return (
+          <div className="panel" style={{ marginTop: 14, borderColor: "#FCD34D", borderWidth: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, color: "#B45309" }}>🔔 Renewals needed ({lowBal.length})</h3>
+              <button className="btn sm ghost" onClick={() => router.push("/students")}>Open Students →</button>
+            </div>
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              {lowBal.slice(0, 10).map((p: any) => {
+                const msg = `Hi! 🤖 ${p.student_name} has ${p.left === 0 ? "used all sessions" : `only ${p.left} session${p.left > 1 ? "s" : ""} left`} at ClickRobot Laos. Renew now to keep learning without a break! Reply here or visit us to renew. Thank you! 🙏`;
+                const waHref = p.phone ? `https://wa.me/${p.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(msg)}` : null;
+                return (
+                  <div key={p.id} style={{ padding: 10, background: "#FFFBEB", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <b style={{ fontSize: 14 }}>{p.student_name}</b>
+                      <span className={"pill " + (p.left === 0 ? "Rejected" : "Submitted")} style={{ marginLeft: 8, fontSize: 10.5 }}>
+                        {p.left === 0 ? "0 left — expired" : `${p.left} left`}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {waHref && <a className="btn sm wa" href={waHref} target="_blank" rel="noreferrer">📱 Send renewal</a>}
+                      <button className="btn sm ghost" onClick={() => router.push(`/students/${p.id}`)}>Open</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 🎂 Birthdays this week */}
+      {(() => {
+        const now = new Date();
+        const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const inDays = (dob: string) => {
+          if (!dob) return -1;
+          const d = new Date(dob + "T12:00:00");
+          if (isNaN(d.getTime())) return -1;
+          const next = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+          if (next < todayMid) next.setFullYear(now.getFullYear() + 1);
+          return Math.round((next.getTime() - todayMid.getTime()) / 86400000);
+        };
+        const bdays = packages
+          .map((p: any) => ({ ...p, days: inDays(p.date_of_birth) }))
+          .filter((p: any) => p.days >= 0 && p.days <= 6)
+          .sort((a: any, b: any) => a.days - b.days);
+        if (bdays.length === 0) return null;
+        return (
+          <div className="panel" style={{ marginTop: 14, borderColor: "#F9A8D4", borderWidth: 2 }}>
+            <h3 style={{ margin: 0, color: "#BE185D" }}>🎂 Birthdays this week ({bdays.length})</h3>
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              {bdays.map((p: any) => {
+                const dobD = new Date(p.date_of_birth + "T12:00:00");
+                const bYear = new Date(now.getFullYear(), dobD.getMonth(), dobD.getDate()) < todayMid ? now.getFullYear() + 1 : now.getFullYear();
+                const turning = bYear - dobD.getFullYear();
+                const when = p.days === 0 ? "🎉 TODAY!" : p.days === 1 ? "Tomorrow" : `In ${p.days} days`;
+                const msg = `🎂🎉 Happy Birthday ${p.student_name}! 🎉🎂\n\nEveryone at ClickRobot Laos wishes you an amazing day full of fun and robots! 🤖\n\nSee you in class!`;
+                const waHref = p.phone ? `https://wa.me/${p.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(msg)}` : null;
+                return (
+                  <div key={p.id} style={{ padding: 10, background: "#FDF2F8", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <b style={{ fontSize: 14 }}>{p.student_name}</b>
+                      <span className={"pill " + (p.days === 0 ? "Approved" : "Draft")} style={{ marginLeft: 8, fontSize: 10.5 }}>{when} · turns {turning}</span>
+                    </div>
+                    {waHref && <a className="btn sm wa" href={waHref} target="_blank" rel="noreferrer">🎂 Send wishes</a>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Today's inquiries & trials */}
+      {todayLeads.length > 0 && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0 }}>🎯 Today&apos;s inquiries & trials ({todayLeads.length})</h3>
+            <button className="btn sm ghost" onClick={() => router.push("/leads")}>Open Leads →</button>
+          </div>
+          <div className="tblwrap" style={{ marginTop: 10 }}>
+            <table className="tbl" style={{ fontSize: 13 }}>
+              <thead><tr>
+                <th>Student</th><th>Parent</th><th>Phone</th>
+                <th style={{ textAlign: "right" }}>Age</th><th>Course</th><th>Status</th>
+              </tr></thead>
+              <tbody>{todayLeads.map((l: any) => {
+                const prog = app.programs.find((p) => p.id === l.program_id)?.name || "—";
+                const isTrialToday = l.trial_date === t;
+                return (
+                  <tr key={l.id}>
+                    <td><b>{l.student_name}</b>{isTrialToday && <span className="pill Draft" style={{ marginLeft: 6, fontSize: 10 }}>TRIAL TODAY</span>}</td>
+                    <td>{l.parent_name || "—"}</td>
+                    <td>{l.phone || "—"}</td>
+                    <td className="num">{l.age || "—"}</td>
+                    <td>{prog}</td>
+                    <td><span className={"pill " + (l.status === "Registered" ? "Approved" : l.status === "Lost" ? "Rejected" : "Draft")}>{l.status}</span></td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="grid2">
         <div className="panel">

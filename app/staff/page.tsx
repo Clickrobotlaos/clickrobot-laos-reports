@@ -29,14 +29,18 @@ function StaffDirectory() {
   const [roleFilter, setRoleFilter] = useState("");
   const [showForm, setShowForm] = useState<null | any>(null);
   const [expiring, setExpiring] = useState<any[]>([]);
+  const [pendingLeaves, setPendingLeaves] = useState<any[]>([]);
+  const [leaveBusy, setLeaveBusy] = useState<string | null>(null);
+  const canApproveLeave = app.role === "admin" || app.role === "co_admin" || app.role === "manager";
 
   async function reload() {
     setLoading(true);
-    const [all, exp] = await Promise.all([
+    const [all, exp, lv] = await Promise.all([
       supabase.from("users").select("*").order("name"),
       supabase.from("v_contracts_expiring").select("*").order("days_left"),
+      canApproveLeave ? supabase.from("leave_requests").select("*").eq("status", "Pending").order("start_date") : Promise.resolve({ data: [] }),
     ]);
-    setRows(all.data || []); setExpiring(exp.data || []); setLoading(false);
+    setRows(all.data || []); setExpiring(exp.data || []); setPendingLeaves(lv.data || []); setLoading(false);
   }
   useEffect(() => { reload(); }, []);
 
@@ -59,6 +63,46 @@ function StaffDirectory() {
           <button className="btn sm" onClick={() => setShowForm({})}>+ Add staff</button>
         </div>
       </div>
+
+      {/* 🏖️ Pending leave approvals */}
+      {canApproveLeave && pendingLeaves.length > 0 && (
+        <div className="panel" style={{ borderColor: "#7DD3FC", borderWidth: 2, background: "#F0F9FF" }}>
+          <h3 style={{ color: "#0369A1" }}>🏖️ Pending leave requests ({pendingLeaves.length})</h3>
+          <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+            {pendingLeaves.map((lv) => (
+              <div key={lv.id} style={{ padding: 12, background: "white", borderRadius: 12, border: "1px solid #BAE6FD", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <div>
+                  <b style={{ fontSize: 14.5 }}>{lv.user_name || "Staff"}</b>
+                  <span className="pill Draft" style={{ marginLeft: 8, fontSize: 10.5 }}>{lv.leave_type}</span>
+                  <div style={{ fontSize: 13, color: "var(--ink2)", marginTop: 3 }}>
+                    {lv.start_date}{lv.end_date !== lv.start_date ? ` → ${lv.end_date}` : ""} · <b>{lv.days} day{Number(lv.days) !== 1 ? "s" : ""}</b>
+                  </div>
+                  {lv.reason && <div style={{ fontSize: 12.5, marginTop: 3 }}>Reason: {lv.reason}</div>}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="btn sm ok" disabled={leaveBusy === lv.id} onClick={async () => {
+                    setLeaveBusy(lv.id);
+                    await supabase.from("leave_requests").update({
+                      status: "Approved", reviewed_by: app.userId, reviewed_by_name: app.userName,
+                      reviewed_at: new Date().toISOString(),
+                    }).eq("id", lv.id);
+                    setLeaveBusy(null); reload();
+                  }}>✓ Approve</button>
+                  <button className="btn sm bad" disabled={leaveBusy === lv.id} onClick={async () => {
+                    const note = window.prompt("Reason for rejecting (optional):") || null;
+                    setLeaveBusy(lv.id);
+                    await supabase.from("leave_requests").update({
+                      status: "Rejected", reviewed_by: app.userId, reviewed_by_name: app.userName,
+                      reviewed_at: new Date().toISOString(), review_note: note,
+                    }).eq("id", lv.id);
+                    setLeaveBusy(null); reload();
+                  }}>✗ Reject</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {expiring.length > 0 && !showForm && (
         <div className="banner warn">

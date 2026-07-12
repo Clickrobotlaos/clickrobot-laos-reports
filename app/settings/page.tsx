@@ -22,6 +22,7 @@ function SettingsView() {
     <div>
       <div className="sectionhead"><h2>Settings</h2></div>
       <ThemePanel />
+      <TrialRulesPanel />
       <CompanyPanel />
       <BankPanel />
       <TermsPanel />
@@ -70,6 +71,36 @@ function ThemePanel() {
         ))}
       </div>
       {msg && <div className="banner ok" style={{ marginTop: 10 }}>{msg}</div>}
+    </div>
+  );
+}
+
+function TrialRulesPanel() {
+  const [max, setMax] = useState(2);
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "trial_rules").maybeSingle().then(({ data }) => {
+      const v: any = data?.value;
+      if (v?.max_per_class) setMax(Number(v.max_per_class));
+    });
+  }, []);
+  async function save() {
+    const { error } = await supabase.from("settings").upsert({ key: "trial_rules", value: { max_per_class: Number(max) || 2 } });
+    setMsg(error ? error.message : "Saved.");
+    setTimeout(() => setMsg(""), 2000);
+  }
+  return (
+    <div className="panel">
+      <h3>🎯 Trial class rules</h3>
+      <div className="frow c2">
+        <Field label="Max trial students per class session" hint="Even if seats are free, limit trials so teachers aren't overloaded.">
+          <input type="number" min="1" max="10" value={max} onChange={(e) => setMax(Number(e.target.value))} style={{ maxWidth: 120 }} />
+        </Field>
+      </div>
+      <div className="btnrow">
+        <button className="btn sm" onClick={save}>Save trial rules</button>
+        {msg && <span className="banner ok" style={{ padding: "6px 12px" }}>{msg}</span>}
+      </div>
     </div>
   );
 }

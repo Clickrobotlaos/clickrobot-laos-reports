@@ -85,10 +85,11 @@ function ClassCard({ cls, date, branchName, onClick }: { cls: any; date: string;
 
   useEffect(() => { (async () => {
     // count regulars + confirmed makeups for this date
-    const [regulars, makeups, atts] = await Promise.all([
+    const [regulars, makeups, atts, trials] = await Promise.all([
       supabase.from("class_bookings").select("id,package_id").eq("class_id", cls.id).eq("kind", "regular").eq("status", "Confirmed"),
       supabase.from("class_bookings").select("id,package_id").eq("class_id", cls.id).eq("kind", "makeup").eq("status", "Confirmed").eq("makeup_date", date),
       supabase.from("attendance").select("package_id,status,class_id").eq("date", date).eq("class_id", cls.id),
+      supabase.from("leads").select("id,trial_result").eq("trial_class_id", cls.id).eq("trial_date", date).in("status", ["TrialBooked", "TrialAttended"]),
     ]);
     const attById = new Map<string, string>();
     (atts.data || []).forEach((a: any) => attById.set(a.package_id, a.status));
@@ -103,7 +104,13 @@ function ClassCard({ cls, date, branchName, onClick }: { cls: any; date: string;
       else if (s === "Absent") a++;
       else u++;
     });
-    setStats({ enrolled: all.size, present: p, absent: a, unmarked: u });
+    // Trials count toward enrolled + marked stats
+    (trials.data || []).forEach((tr: any) => {
+      if (tr.trial_result === "Attended") p++;
+      else if (tr.trial_result === "NoShow") a++;
+      else u++;
+    });
+    setStats({ enrolled: all.size + (trials.data || []).length, present: p, absent: a, unmarked: u });
   })(); }, [cls.id, date]);
 
   const teacherName = cls.users?.name || "—";
@@ -141,18 +148,21 @@ function ClassCard({ cls, date, branchName, onClick }: { cls: any; date: string;
 function ClassAttendance({ cls, date, onBack }: { cls: any; date: string; onBack: () => void }) {
   const app = useApp();
   const [roster, setRoster] = useState<any[]>([]);
+  const [trialKids, setTrialKids] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
-    const [regulars, makeups, atts] = await Promise.all([
+    const [regulars, makeups, atts, trials] = await Promise.all([
       supabase.from("class_bookings").select("id,kind,package_id,student_packages(id,student_name,parent_name,phone,photo_url,sessions_total,sessions_used)")
         .eq("class_id", cls.id).eq("kind", "regular").eq("status", "Confirmed"),
       supabase.from("class_bookings").select("id,kind,package_id,student_packages(id,student_name,parent_name,phone,photo_url,sessions_total,sessions_used)")
         .eq("class_id", cls.id).eq("kind", "makeup").eq("status", "Confirmed").eq("makeup_date", date),
       supabase.from("attendance").select("id,package_id,status").eq("date", date).eq("class_id", cls.id),
+      supabase.from("leads").select("id,student_name,parent_name,phone,age,trial_result").eq("trial_class_id", cls.id).eq("trial_date", date).in("status", ["TrialBooked", "TrialAttended"]),
     ]);
+    setTrialKids(trials.data || []);
     const attByPkg = new Map<string, any>();
     (atts.data || []).forEach((a: any) => attByPkg.set(a.package_id, a));
 
@@ -189,6 +199,20 @@ function ClassAttendance({ cls, date, onBack }: { cls: any; date: string; onBack
         class_id: cls.id, is_makeup: row.booking_kind === "makeup",
         recorded_by: app.userId,
       });
+    }
+    reload();
+    setSavingId(null);
+  }
+
+  // Trial kids: marking updates the LEAD (they're not students yet)
+  async function markTrial(lead: any, attended: boolean) {
+    setSavingId(lead.id);
+    if (attended) {
+      await supabase.from("leads").update({ status: "TrialAttended", trial_result: "Attended", last_contact_at: new Date().toISOString() }).eq("id", lead.id);
+      await supabase.from("lead_activities").insert({ lead_id: lead.id, action: "Trial attended", note: `Marked in ${cls.name}`, by_user: app.userId, by_name: app.userName });
+    } else {
+      await supabase.from("leads").update({ status: "Contacted", trial_result: "NoShow", trial_class_id: null, trial_date: null, last_contact_at: new Date().toISOString() }).eq("id", lead.id);
+      await supabase.from("lead_activities").insert({ lead_id: lead.id, action: "Trial no-show", by_user: app.userId, by_name: app.userName });
     }
     reload();
     setSavingId(null);
@@ -250,6 +274,11 @@ function ClassAttendance({ cls, date, onBack }: { cls: any; date: string; onBack
                     </div>
                   </div>
                   <div className="attn-actions">
+                    {r.phone && (
+                      <a className="btn sm wa" target="_blank" rel="noreferrer"
+                        href={`https://wa.me/${(r.phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${r.parent_name || "Parent"}! 🤖 Today ${r.student_name} did great in ${cls.name}! Today we practiced: \n\nSee photos below! 📸\n– Teacher ${app.userName || ""}, ClickRobot Laos`)}`}
+                        title="Send class update via WhatsApp">📱</a>
+                    )}
                     <button className={"btn sm " + (r.attendance_status === "Present" ? "ok" : "ghost")}
                       disabled={savingId === r.id} onClick={() => setStatus(r, "Present")}>
                       ✓ Present
@@ -264,6 +293,41 @@ function ClassAttendance({ cls, date, onBack }: { cls: any; date: string; onBack
             })}
           </div>
         )}
+
+      {/* Trial kids for this class today */}
+      {trialKids.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <h3 style={{ color: "#D97706", fontSize: 15, marginBottom: 8 }}>🎯 Trial students ({trialKids.length})</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {trialKids.map((tk) => (
+              <div key={tk.id} className="attn-row" style={{ border: "2px solid #FCD34D", background: "#FFFBEB" }}>
+                <div className="attn-info">
+                  <div style={{ width: 40, height: 40, borderRadius: 20, background: "#FEF3C7", color: "#D97706", display: "grid", placeItems: "center", fontWeight: 700, marginRight: 10, flexShrink: 0 }}>
+                    {(tk.student_name || "?").slice(0, 1).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="attn-name">
+                      {tk.student_name}
+                      <span className="pill Submitted" style={{ marginLeft: 8, fontSize: 10 }}>🎯 TRIAL</span>
+                    </div>
+                    <div className="attn-sub">{tk.parent_name || ""}{tk.phone ? ` · ${tk.phone}` : ""}{tk.age ? ` · ${tk.age} yrs` : ""}</div>
+                  </div>
+                </div>
+                <div className="attn-actions">
+                  {tk.trial_result === "Attended" ? (
+                    <span className="pill Approved" style={{ padding: "8px 12px" }}>✓ Attended</span>
+                  ) : (
+                    <>
+                      <button className="btn sm ok" disabled={savingId === tk.id} onClick={() => markTrial(tk, true)}>✓ Attended</button>
+                      <button className="btn sm bad" disabled={savingId === tk.id} onClick={() => markTrial(tk, false)}>✗ No-show</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         .attn-row{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
