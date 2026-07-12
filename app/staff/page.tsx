@@ -30,17 +30,22 @@ function StaffDirectory() {
   const [showForm, setShowForm] = useState<null | any>(null);
   const [expiring, setExpiring] = useState<any[]>([]);
   const [pendingLeaves, setPendingLeaves] = useState<any[]>([]);
+  const [allLeaves, setAllLeaves] = useState<any[]>([]);
+  const [showAllLeaves, setShowAllLeaves] = useState(false);
+  const [editLeave, setEditLeave] = useState<any>(null);
   const [leaveBusy, setLeaveBusy] = useState<string | null>(null);
   const canApproveLeave = app.role === "admin" || app.role === "co_admin" || app.role === "manager";
+  const isCeo = app.role === "admin";
 
   async function reload() {
     setLoading(true);
-    const [all, exp, lv] = await Promise.all([
+    const [all, exp, lv, lvAll] = await Promise.all([
       supabase.from("users").select("*").order("name"),
       supabase.from("v_contracts_expiring").select("*").order("days_left"),
       canApproveLeave ? supabase.from("leave_requests").select("*").eq("status", "Pending").order("start_date") : Promise.resolve({ data: [] }),
+      isCeo ? supabase.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
     ]);
-    setRows(all.data || []); setExpiring(exp.data || []); setPendingLeaves(lv.data || []); setLoading(false);
+    setRows(all.data || []); setExpiring(exp.data || []); setPendingLeaves(lv.data || []); setAllLeaves(lvAll.data || []); setLoading(false);
   }
   useEffect(() => { reload(); }, []);
 
@@ -101,6 +106,68 @@ function StaffDirectory() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* CEO: manage all leave records */}
+      {isCeo && allLeaves.length > 0 && (
+        <div className="panel">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0 }}>🗂️ All leave records <span style={{ fontSize: 11, color: "var(--ink2)", fontWeight: 400 }}>(CEO only — edit anything)</span></h3>
+            <button className="btn sm ghost" onClick={() => setShowAllLeaves(!showAllLeaves)}>{showAllLeaves ? "Hide" : `Show (${allLeaves.length})`}</button>
+          </div>
+          {showAllLeaves && (
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              {allLeaves.map((lv) => editLeave?.id === lv.id ? (
+                <div key={lv.id} style={{ padding: 12, background: "#FFFBEB", borderRadius: 12, border: "1.5px solid #FCD34D" }}>
+                  <b style={{ fontSize: 13.5 }}>{lv.user_name}</b>
+                  <div className="frow c3" style={{ marginTop: 8 }}>
+                    <div className="field"><label>Type</label>
+                      <select value={editLeave.leave_type} onChange={(e) => setEditLeave({ ...editLeave, leave_type: e.target.value })}>
+                        <option>Sick</option><option>Annual</option><option>Emergency</option><option>Unpaid</option><option>Other</option>
+                      </select>
+                    </div>
+                    <div className="field"><label>From</label><input type="date" value={editLeave.start_date} onChange={(e) => setEditLeave({ ...editLeave, start_date: e.target.value })} /></div>
+                    <div className="field"><label>To</label><input type="date" value={editLeave.end_date} onChange={(e) => setEditLeave({ ...editLeave, end_date: e.target.value })} /></div>
+                    <div className="field"><label>Days</label><input type="number" min="0.5" step="0.5" value={editLeave.days} onChange={(e) => setEditLeave({ ...editLeave, days: e.target.value })} /></div>
+                    <div className="field"><label>Status</label>
+                      <select value={editLeave.status} onChange={(e) => setEditLeave({ ...editLeave, status: e.target.value })}>
+                        <option>Pending</option><option>Approved</option><option>Rejected</option><option>Cancelled</option>
+                      </select>
+                    </div>
+                    <div className="field"><label>Note</label><input value={editLeave.review_note || ""} onChange={(e) => setEditLeave({ ...editLeave, review_note: e.target.value })} /></div>
+                  </div>
+                  <div className="btnrow" style={{ marginTop: 8 }}>
+                    <button className="btn sm" disabled={leaveBusy === lv.id} onClick={async () => {
+                      setLeaveBusy(lv.id);
+                      await supabase.from("leave_requests").update({
+                        leave_type: editLeave.leave_type, start_date: editLeave.start_date, end_date: editLeave.end_date,
+                        days: Number(editLeave.days) || 1, status: editLeave.status, review_note: editLeave.review_note || null,
+                        reviewed_by: app.userId, reviewed_by_name: app.userName, reviewed_at: new Date().toISOString(),
+                      }).eq("id", lv.id);
+                      setLeaveBusy(null); setEditLeave(null); reload();
+                    }}>💾 Save</button>
+                    <button className="btn sm bad" disabled={leaveBusy === lv.id} onClick={async () => {
+                      if (!confirm(`Delete this ${lv.leave_type} leave record for ${lv.user_name}?`)) return;
+                      setLeaveBusy(lv.id);
+                      await supabase.from("leave_requests").delete().eq("id", lv.id);
+                      setLeaveBusy(null); setEditLeave(null); reload();
+                    }}>🗑️ Delete</button>
+                    <button className="btn sm ghost" onClick={() => setEditLeave(null)}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={lv.id} style={{ padding: 10, background: "#F8FAFD", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <b style={{ fontSize: 13.5 }}>{lv.user_name || "Staff"}</b>
+                    <span style={{ fontSize: 12.5, color: "var(--ink2)" }}> · {lv.leave_type} · {lv.start_date}{lv.end_date !== lv.start_date ? ` → ${lv.end_date}` : ""} · {lv.days}d</span>
+                    <span className={"pill " + (lv.status === "Approved" ? "Approved" : lv.status === "Rejected" || lv.status === "Cancelled" ? "Rejected" : "Submitted")} style={{ marginLeft: 8, fontSize: 10.5 }}>{lv.status}</span>
+                  </div>
+                  <button className="btn sm ghost" onClick={() => setEditLeave({ ...lv })}>✏️ Edit</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -208,6 +275,7 @@ function StaffForm({ existing, onDone, onCancel }: { existing?: any; onDone: () 
   // Locked fields when editing your own profile (unless you're the top-level admin, who can edit anything about themselves)
   const lockSalaryRole = isSelfEdit && app.role !== "admin";
   const [f, setF] = useState<any>(existing || {
+    user_id: "",
     name: "", email: "", phone: "", position: "",
     role: "contractor", branch_id: app.branches[0]?.id || "",
     status: "Active", start_date: todayStr(), end_date: "",
@@ -259,8 +327,11 @@ function StaffForm({ existing, onDone, onCancel }: { existing?: any; onDone: () 
       if (f.role === "contractor") {
         result = await supabase.from("users").insert({ ...payload, id: crypto.randomUUID() });
       } else {
-        setErr("For staff who need a login (roles other than Contractor), first create the account in Supabase → Authentication → Users, then edit that user's profile here.");
-        setBusy(false); return;
+        if (!f.user_id || !/^[0-9a-f-]{36}$/i.test(f.user_id.trim())) {
+          setErr("For staff with login, paste the Supabase User UID (looks like a1b2c3d4-5678-...). Create the account first in Supabase → Authentication → Users, then copy their UID here.");
+          setBusy(false); return;
+        }
+        result = await supabase.from("users").insert({ ...payload, id: f.user_id.trim() });
       }
     }
     setBusy(false);
@@ -288,6 +359,11 @@ function StaffForm({ existing, onDone, onCancel }: { existing?: any; onDone: () 
               <option value="admin">CEO / Admin (login)</option>
             </select>
           </Field>
+          {!existing && f.role !== "contractor" && (
+            <Field label="Supabase User UID *" hint="From Supabase → Authentication → Users → click the user → copy User UID">
+              <input value={f.user_id || ""} onChange={(e) => setF({ ...f, user_id: e.target.value })} placeholder="a1b2c3d4-5678-9abc-def0-1234567890ab" style={{ fontFamily: "monospace", fontSize: 12 }} />
+            </Field>
+          )}
           <Field label="Branch">
             <select value={f.branch_id || ""} onChange={(e) => setF({ ...f, branch_id: e.target.value })}>
               <option value="">— No branch —</option>
