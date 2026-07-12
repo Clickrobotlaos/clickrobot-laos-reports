@@ -12,13 +12,14 @@ const NAV = [
   { k: "/scan",       label: "Quick Scan", icon: "scan" },
   { k: "/classes",    label: "Classes",    icon: "calendar" },
   { k: "/students",   label: "Students",   icon: "users" },
+  { k: "/leads",      label: "Leads",      icon: "leads" },
   { k: "/reports",    label: "Reports",    icon: "report" },
   { k: "/invoices",   label: "Invoices",   icon: "invoice" },
   { k: "/records",    label: "Records",    icon: "coins" },
   { k: "/staff",      label: "Staff",      icon: "badge" },
   { k: "/payroll",    label: "Payroll",    icon: "pay" },
   { k: "/import",     label: "Import",     icon: "import" },
-  { k: "/profile",    label: "My profile", icon: "badge" },
+  { k: "/profile",    label: "My Portal",  icon: "badge" },
   { k: "/settings",   label: "Settings",   icon: "gear" },
 ];
 
@@ -36,6 +37,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (n.k === "/settings") return can.settings;
     if (n.k === "/staff") return can.staff;
     if (n.k === "/scan") return can.attendance;
+    if (n.k === "/leads") return can.attendance || can.addRecords || app.role === "admin" || app.role === "co_admin";
     if (n.k === "/classes") return app.role === "admin" || app.role === "manager";
     if (n.k === "/payroll") return can.payroll;
     if (n.k === "/import") return can.addRecords || app.role === "admin" || app.role === "co_admin";
@@ -44,7 +46,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (n.k === "/reports") return can.submit || can.approve || app.role === "admin";
     if (n.k === "/students") return can.attendance;
     if (n.k === "/attendance") return can.attendance;
-    if (n.k === "/profile") return app.role === "staff";
+    if (n.k === "/profile") return true;
     if (n.k === "/") return can.dashboard;
     return true;
   });
