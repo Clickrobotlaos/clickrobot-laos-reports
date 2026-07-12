@@ -19,7 +19,7 @@ const NAV = [
   { k: "/staff",      label: "Staff",      icon: "badge" },
   { k: "/payroll",    label: "Payroll",    icon: "pay" },
   { k: "/import",     label: "Import",     icon: "import" },
-  { k: "/profile",    label: "My Portal",  icon: "badge" },
+  { k: "/profile",    label: "My profile", icon: "badge" },
   { k: "/settings",   label: "Settings",   icon: "gear" },
 ];
 
@@ -46,7 +46,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (n.k === "/reports") return can.submit || can.approve || app.role === "admin";
     if (n.k === "/students") return can.attendance;
     if (n.k === "/attendance") return can.attendance;
-    if (n.k === "/profile") return true;
+    if (n.k === "/profile") return app.role === "staff";
     if (n.k === "/") return can.dashboard;
     return true;
   });
@@ -85,6 +85,9 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </div>
         {children}
+        <div style={{ textAlign: "center", padding: "20px 12px 100px", fontSize: 11, color: "var(--ink2)", opacity: 0.55, lineHeight: 1.5 }}>
+          © {new Date().getFullYear()} ClickRobot Laos · Developed by Vixaty Phompanya
+        </div>
       </main>
 
       {/* Mobile bottom nav: 4 items + More */}
