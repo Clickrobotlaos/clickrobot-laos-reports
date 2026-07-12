@@ -19,7 +19,7 @@ const NAV = [
   { k: "/staff",      label: "Staff",      icon: "badge" },
   { k: "/payroll",    label: "Payroll",    icon: "pay" },
   { k: "/import",     label: "Import",     icon: "import" },
-  { k: "/profile",    label: "My profile", icon: "badge" },
+  { k: "/profile",    label: "My Portal",  icon: "badge" },
   { k: "/settings",   label: "Settings",   icon: "gear" },
 ];
 
@@ -46,7 +46,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (n.k === "/reports") return can.submit || can.approve || app.role === "admin";
     if (n.k === "/students") return can.attendance;
     if (n.k === "/attendance") return can.attendance;
-    if (n.k === "/profile") return app.role === "staff";
+    if (n.k === "/profile") return true;
     if (n.k === "/") return can.dashboard;
     return true;
   });
