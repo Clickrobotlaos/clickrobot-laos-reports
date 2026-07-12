@@ -13,6 +13,10 @@ export default function RecordsPage() {
   const app = useApp();
   if (app.loading) return <div style={{ padding: 40 }}>Loading…</div>;
   if (!app.userId) return null;
+  const can = PERMS[app.role] || PERMS.viewer;
+  if (!can.addRecords && app.role !== "admin") {
+    return <Shell><div className="panel"><div className="empty">You don&apos;t have permission to view this page. Contact your administrator.</div></div></Shell>;
+  }
   return <Shell><RecordsView /></Shell>;
 }
 

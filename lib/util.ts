@@ -48,16 +48,18 @@ export type Perms = {
   monthlyReport: boolean;   // NEW — access to monthly PDF report
   netProfit: boolean;        // NEW — see net profit card on dashboard
   ceoSalary: boolean;        // NEW — see CEO's salary in payroll/staff
+  viewInvoices: boolean;     // can view invoices list (read-only for manager)
+  financialData: boolean;    // sees expenses, income totals, financial charts
 };
 
 export const PERMS: Record<string, Perms> = {
-  admin:      { submit: true,  addRecords: true,  approve: true,  payroll: true,  settings: true,  dashboard: true, staff: true,  fullDashboard: true,  attendance: true, monthlyReport: true,  netProfit: true,  ceoSalary: true },
-  co_admin:   { submit: true,  addRecords: true,  approve: true,  payroll: true,  settings: true,  dashboard: true, staff: true,  fullDashboard: true,  attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false },
-  manager:    { submit: false, addRecords: false, approve: true,  payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: true,  attendance: true, monthlyReport: false, netProfit: true,  ceoSalary: false },
-  finance:    { submit: false, addRecords: true,  approve: false, payroll: true,  settings: false, dashboard: true, staff: false, fullDashboard: true,  attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false },
-  staff:      { submit: true,  addRecords: false, approve: false, payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: false, attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false },
-  viewer:     { submit: false, addRecords: false, approve: false, payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: true,  attendance: false, monthlyReport: false, netProfit: false, ceoSalary: false },
-  contractor: { submit: false, addRecords: false, approve: false, payroll: false, settings: false, dashboard: false, staff: false, fullDashboard: false, attendance: false, monthlyReport: false, netProfit: false, ceoSalary: false },
+  admin:      { submit: true,  addRecords: true,  approve: true,  payroll: true,  settings: true,  dashboard: true, staff: true,  fullDashboard: true,  attendance: true, monthlyReport: true,  netProfit: true,  ceoSalary: true,  viewInvoices: true,  financialData: true  },
+  co_admin:   { submit: true,  addRecords: true,  approve: true,  payroll: true,  settings: true,  dashboard: true, staff: true,  fullDashboard: true,  attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: true,  financialData: true  },
+  manager:    { submit: false, addRecords: false, approve: true,  payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: false, attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: true,  financialData: false },
+  finance:    { submit: false, addRecords: true,  approve: false, payroll: true,  settings: false, dashboard: true, staff: false, fullDashboard: true,  attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: true,  financialData: true  },
+  staff:      { submit: true,  addRecords: false, approve: false, payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: false, attendance: true, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: false, financialData: false },
+  viewer:     { submit: false, addRecords: false, approve: false, payroll: false, settings: false, dashboard: true, staff: false, fullDashboard: false, attendance: false, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: false, financialData: false },
+  contractor: { submit: false, addRecords: false, approve: false, payroll: false, settings: false, dashboard: false, staff: false, fullDashboard: false, attendance: false, monthlyReport: false, netProfit: false, ceoSalary: false, viewInvoices: false, financialData: false },
 };
 
 export const isAdminLevel = (role: string) => role === "admin";

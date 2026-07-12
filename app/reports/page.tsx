@@ -11,6 +11,10 @@ export default function ReportsPage() {
   const app = useApp();
   if (app.loading) return <div style={{ padding: 40 }}>Loading…</div>;
   if (!app.userId) return null;
+  const can = PERMS[app.role] || PERMS.viewer;
+  if (!can.approve && app.role !== "admin" && app.role !== "co_admin") {
+    return <Shell><div className="panel"><div className="empty">You don&apos;t have permission to view this page. Contact your administrator.</div></div></Shell>;
+  }
   return <Shell><ReportsView /></Shell>;
 }
 

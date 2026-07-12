@@ -130,9 +130,9 @@ function Dashboard() {
 
       <div className="cards">
         <div className="card ok"><span className="dot" /><div className="lbl">Income today</div><div className="val">{M(stats.incToday)}</div></div>
-        <div className="card bad"><span className="dot" /><div className="lbl">Expenses today</div><div className="val">{M(stats.expToday)}</div></div>
-        <div className="card ok"><div className="lbl">Income this month</div><div className="val">{M(stats.incMonth)}</div><div className="sub">Year: {M(stats.incYear)}</div></div>
-        <div className="card bad"><div className="lbl">Expenses this month</div><div className="val">{M(stats.expMonth)}</div><div className="sub">Year: {M(stats.expYear)}</div></div>
+        <div className="card bad" style={{ display: can.financialData ? undefined : "none" }}><span className="dot" /><div className="lbl">Expenses today</div><div className="val">{M(stats.expToday)}</div></div>
+        <div className="card ok" style={{ display: can.financialData ? undefined : "none" }}><div className="lbl">Income this month</div><div className="val">{M(stats.incMonth)}</div><div className="sub">Year: {M(stats.incYear)}</div></div>
+        <div className="card bad" style={{ display: can.financialData ? undefined : "none" }}><div className="lbl">Expenses this month</div><div className="val">{M(stats.expMonth)}</div><div className="sub">Year: {M(stats.expYear)}</div></div>
         <div className={"card " + (net >= 0 ? "ok" : "bad")} style={{ display: can.netProfit ? undefined : "none" }}><div className="lbl">Net this month</div><div className="val">{M(net)}</div></div>
         <div className="card"><div className="lbl">Unpaid balance</div><div className="val">{M(stats.unpaid)}</div></div>
         <div className="card" onClick={() => router.push("/students")} style={{ cursor: "pointer" }}>
@@ -265,6 +265,7 @@ function Dashboard() {
         </div>
       )}
 
+      {can.financialData && (
       <div className="grid2">
         <div className="panel">
           <h3>Income vs expenses — last 6 months ({cur})</h3>
@@ -298,7 +299,9 @@ function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
+      {can.financialData && (
       <div className="panel">
         <h3>Branch performance — this month</h3>
         <div className="tblwrap">
@@ -311,6 +314,7 @@ function Dashboard() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }
