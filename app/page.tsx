@@ -129,12 +129,12 @@ function Dashboard() {
       )}
 
       <div className="cards">
-        <div className="card ok"><span className="dot" /><div className="lbl">Income today</div><div className="val">{M(stats.incToday)}</div></div>
+        <div className="card ok" style={{ display: can.financialData ? undefined : "none" }}><span className="dot" /><div className="lbl">Income today</div><div className="val">{M(stats.incToday)}</div></div>
         <div className="card bad" style={{ display: can.financialData ? undefined : "none" }}><span className="dot" /><div className="lbl">Expenses today</div><div className="val">{M(stats.expToday)}</div></div>
         <div className="card ok" style={{ display: can.financialData ? undefined : "none" }}><div className="lbl">Income this month</div><div className="val">{M(stats.incMonth)}</div><div className="sub">Year: {M(stats.incYear)}</div></div>
         <div className="card bad" style={{ display: can.financialData ? undefined : "none" }}><div className="lbl">Expenses this month</div><div className="val">{M(stats.expMonth)}</div><div className="sub">Year: {M(stats.expYear)}</div></div>
         <div className={"card " + (net >= 0 ? "ok" : "bad")} style={{ display: can.netProfit ? undefined : "none" }}><div className="lbl">Net this month</div><div className="val">{M(net)}</div></div>
-        <div className="card"><div className="lbl">Unpaid balance</div><div className="val">{M(stats.unpaid)}</div></div>
+        <div className="card" style={{ display: can.financialData ? undefined : "none" }}><div className="lbl">Unpaid balance</div><div className="val">{M(stats.unpaid)}</div></div>
         <div className="card" onClick={() => router.push("/students")} style={{ cursor: "pointer" }}>
           <div className="lbl">Active students</div><div className="val">{activePackages}</div>
           <div className="sub">{lowBalance} low balance</div>
@@ -148,8 +148,8 @@ function Dashboard() {
           </div>
           <div className="sub">present · absent</div>
         </div>
-        <div className="card"><div className="lbl">Pending approvals</div><div className="val">{pendingReports}</div><div className="sub">daily reports</div></div>
-        <div className="card"><div className="lbl">Salary payout ({m})</div><div className="val">{M(payPaidLak)}</div><div className="sub">{payPending} pending</div></div>
+        <div className="card" style={{ display: can.approve ? undefined : "none" }}><div className="lbl">Pending approvals</div><div className="val">{pendingReports}</div><div className="sub">daily reports</div></div>
+        <div className="card" style={{ display: can.payroll ? undefined : "none" }}><div className="lbl">Salary payout ({m})</div><div className="val">{M(payPaidLak)}</div><div className="sub">{payPending} pending</div></div>
       </div>
 
       {/* 🔔 Renewal alerts — active students with 2 or fewer sessions left */}
