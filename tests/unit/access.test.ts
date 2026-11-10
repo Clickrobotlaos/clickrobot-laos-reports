@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  canAccessBranch, canReadEmployeeRecord, canReadExecutiveFinance, canReadPayroll, canReadStudent, workspacesFor,
+  canAccessBranch, canReadEmployeeRecord, canReadExecutiveFinance, canReadPayroll, canReadStudent, workspacesFor, studentBranchScope,
 } from "@/lib/cr360/access";
 import type { Viewer } from "@/lib/cr360/types";
 import { redactMoney, safeDirectoryRow } from "@/lib/cr360/redact";
@@ -101,5 +101,22 @@ describe("non-guardian child denial", () => {
     expect(canReadStudent(null, { id: "child-A", branchId: A })).toBe(false);
     expect(canAccessBranch(undefined, A)).toBe(false);
     expect(workspacesFor(null)).toEqual([]);
+  });
+});
+
+describe("student branch scope (legacy data boundary)", () => {
+  it("CEO sees all, manager only granted branches, others nothing", () => {
+    expect(studentBranchScope(ceo)).toBeNull();
+    expect(studentBranchScope(managerA)).toEqual([A]);
+    expect(studentBranchScope(staffA)).toEqual([]);
+    expect(studentBranchScope(teacherA)).toEqual([]);
+    expect(studentBranchScope(guardianA)).toEqual([]);
+    expect(studentBranchScope(revokedManager)).toEqual([]);
+    expect(studentBranchScope(null)).toEqual([]);
+  });
+  it("students workspace is CEO/manager only", () => {
+    expect(workspacesFor(managerA)).toContain("students");
+    expect(workspacesFor(staffA)).not.toContain("students");
+    expect(workspacesFor(partner)).not.toContain("students");
   });
 });

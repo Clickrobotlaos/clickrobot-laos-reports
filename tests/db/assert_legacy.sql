@@ -136,12 +136,12 @@ rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
-select t.ok((select count(*) from public.users) = 5, 'co_admin still reads all users (staff page)');
+select t.ok((select count(*) from public.users) = 6, 'co_admin still reads all users (staff page)');
 rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000f1');
-select t.ok((select count(*) from public.users) = 5, 'finance still reads all users (payroll page) — OWNER DECISION');
+select t.ok((select count(*) from public.users) = 6, 'finance still reads all users (payroll page) — OWNER DECISION');
 rollback;
 
 -- ---------------------------------------------------------------- P1-4 anon invoice listing
@@ -172,4 +172,45 @@ begin
 end $$;
 select t.ok((select sessions_used from public.student_packages where id = '30000000-0000-0000-0000-000000000001') = 1,
   'double tap still debits exactly one session');
+rollback;
+
+-- ---------------------------------------------------------------- P1-6 any signed-in account reads legacy data
+-- A guardian (auth account with no staff record) and a Terminated former employee.
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000e1');
+select t.sec((select count(*) from public.student_packages) = 0, 'P1-6 non-staff account cannot read student packages');
+select t.sec((select count(*) from public.invoices) = 0, 'P1-6 non-staff account cannot read invoices');
+select t.sec((select count(*) from public.settings) = 0, 'P1-6 non-staff account cannot read settings (bank details)');
+do $$ declare blocked boolean; begin
+  begin insert into public.leads (student_name, status) values ('SPAM', 'New'); blocked := false;
+  exception when insufficient_privilege then blocked := true; end;
+  perform t.sec(blocked, 'P1-6 non-staff account cannot create leads');
+end $$;
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000d9');
+select t.sec((select count(*) from public.student_packages) = 0, 'P1-6 Terminated former staff cannot read student packages');
+do $$ declare blocked boolean; n int; begin
+  begin update public.student_packages set sessions_used = 0; get diagnostics n = row_count; blocked := (n = 0);
+  exception when insufficient_privilege then blocked := true; end;
+  perform t.sec(blocked, 'P1-6 Terminated former staff cannot modify student packages');
+end $$;
+rollback;
+
+-- regressions: active legacy staff keep their reads/writes; anon reads still return empty, not errors
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+select t.ok((select count(*) from public.student_packages) = 2, 'active staff still read packages');
+select t.ok((select count(*) from public.settings) = 1, 'active staff still read settings');
+do $$ declare n int; begin
+  insert into public.leads (student_name, status) values ('TEST Lead', 'New'); get diagnostics n = row_count;
+  perform t.ok(n = 1, 'active staff can still create leads');
+end $$;
+rollback;
+
+begin;
+set local role anon; select t.claims(null);
+select t.ok((select count(*) from public.branches) = 0, 'anon branch read returns empty (no error) — invoice share page');
+select t.ok((select count(*) from public.settings) = 0, 'anon settings read returns empty (no error)');
 rollback;

@@ -6,7 +6,10 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'mgr-a@test.invalid'),
   ('00000000-0000-0000-0000-0000000000b1', 'mgr-b@test.invalid'),
   ('00000000-0000-0000-0000-0000000000a2', 'staff-a@test.invalid'),
-  ('00000000-0000-0000-0000-0000000000a3', 'staff-a2@test.invalid');
+  ('00000000-0000-0000-0000-0000000000a3', 'staff-a2@test.invalid'),
+  ('00000000-0000-0000-0000-0000000000e1', 'guardian-1@test.invalid'),
+  ('00000000-0000-0000-0000-0000000000e2', 'guardian-2@test.invalid'),
+  ('00000000-0000-0000-0000-0000000000d9', 'former-staff@test.invalid');
 
 insert into public.branches (id, name, active) values
   ('10000000-0000-0000-0000-00000000000a', 'TEST Branch A', true),
@@ -18,14 +21,16 @@ insert into public.users (id, name, role, branch_id, status, base_salary, salary
   ('00000000-0000-0000-0000-0000000000c1', 'TEST CoAdmin',  'co_admin', null, 'Active', 888, 'LAK', 'FAKE-1', 'FAKE-ID-1'),
   ('00000000-0000-0000-0000-0000000000f1', 'TEST Finance',  'finance',  null, 'Active', 777, 'LAK', 'FAKE-2', 'FAKE-ID-2'),
   ('00000000-0000-0000-0000-0000000000a2', 'TEST Staff A',  'staff',    '10000000-0000-0000-0000-00000000000a', 'Active', 111, 'LAK', 'FAKE-3', 'FAKE-ID-3'),
-  ('00000000-0000-0000-0000-0000000000a3', 'TEST Staff A2', 'staff',    '10000000-0000-0000-0000-00000000000a', 'Active', 222, 'LAK', 'FAKE-4', 'FAKE-ID-4');
+  ('00000000-0000-0000-0000-0000000000a3', 'TEST Staff A2', 'staff',    '10000000-0000-0000-0000-00000000000a', 'Active', 222, 'LAK', 'FAKE-4', 'FAKE-ID-4'),
+  ('00000000-0000-0000-0000-0000000000d9', 'TEST Former',   'staff',    null, 'Terminated', 1, 'LAK', 'FAKE-5', 'FAKE-ID-5');
 
 insert into public.settings (key, value) values ('company', '{"name":"TEST Co"}');
 
 insert into public.programs (id, name) values ('70000000-0000-0000-0000-000000000001', 'TEST Program');
 
-insert into public.student_packages (id, student_name, branch_id, program_id, package, sessions_total, sessions_used, active) values
-  ('30000000-0000-0000-0000-000000000001', 'TEST Child One', '10000000-0000-0000-0000-00000000000a', '70000000-0000-0000-0000-000000000001', '8 sessions', 8, 0, true);
+insert into public.student_packages (id, student_id, student_name, branch_id, program_id, package, sessions_total, sessions_used, active) values
+  ('30000000-0000-0000-0000-000000000001', 'TST-001', 'TEST Child One', '10000000-0000-0000-0000-00000000000a', '70000000-0000-0000-0000-000000000001', '8 sessions', 8, 0, true),
+  ('30000000-0000-0000-0000-000000000002', 'TST-002', 'TEST Child Two', '10000000-0000-0000-0000-00000000000b', '70000000-0000-0000-0000-000000000001', '8 sessions', 8, 0, true);
 
 insert into public.classes (id, name, branch_id, capacity) values
   ('40000000-0000-0000-0000-000000000001', 'TEST Class', '10000000-0000-0000-0000-00000000000a', 8);

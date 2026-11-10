@@ -15,7 +15,7 @@ rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
-select t.ok((select count(*) from public.staff_directory()) = 5, '0002 staff_directory lists colleagues');
+select t.ok((select count(*) from public.staff_directory()) = 5, '0002 staff_directory lists active colleagues only (terminated excluded)');
 select t.ok(not exists (
   select 1 from information_schema.routines r
   join information_schema.parameters p on p.specific_name = r.specific_name

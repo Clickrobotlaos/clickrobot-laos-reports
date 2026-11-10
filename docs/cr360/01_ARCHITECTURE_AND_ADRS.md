@@ -32,12 +32,12 @@ Browser (Lao/English, mobile-first)
 | `lib/cr360/schemas.ts` | Zod API contracts (`.strict()`, rejects ownership fields) |
 | `lib/cr360/i18n.ts` | `en` / `lo` dictionaries, Asia/Vientiane business dates |
 | `lib/cr360/viewer.ts`, `supabase-server.ts`, `api.ts` | Server-only auth context and helpers |
-| `app/360/**` | Role workspaces |
+| `app/360/**` | Role workspaces, incl. `/360/students` (CEO/manager, read-only legacy ledger and reconciliation) and `/360/parent` (verified guardians) |
 | `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision` |
 | `components/cr360/**` | Shell (rail + mobile bottom nav), TimeClock, RequestForms, BranchChart |
 | `supabase/proposed/**` | Migrations + rollbacks awaiting approval |
 | `supabase/tests/rls_negative_tests.sql` | Staging-only RLS negative tests (self-rolling-back) |
-| `tests/unit/**` | Vitest (45 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
+| `tests/unit/**` | Vitest (61 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
 | `tests/db/**` | Local Postgres harness: schema-only production replica, baseline exploit reproduction, migration/rollback verification |
 
 ## ADRs
@@ -74,3 +74,7 @@ Browser (Lao/English, mobile-first)
 | `leads`, `lead_activities` | CRM (Phase 3) | Add branch scoping and consent |
 
 **ADR-011: Prove migrations on a schema replica before asking for approval.** There is no staging project yet, so `tests/db/run.sh` rebuilds the production schema from a read-only catalog snapshot in a throwaway local Postgres. It reproduces each finding, then verifies fix, idempotency and rollback. The harness disproved one of my own audit findings (P2-8) and two bugs in the staging RLS tests, which is why it exists.
+
+**ADR-012: Students are keyed by the legacy `student_id` code; balances are rebuilt from attendance.** Legacy has no students table. `/360/students` groups packages by code and never merges by name. It rebuilds each package ledger from attendance rows and flags any package whose stored `sessions_used` counter disagrees (0 of 182 today). Because legacy RLS lets any staff member read all packages, the branch filter in `lib/cr360/legacy-students.ts` is the effective boundary for managers in `/360` until per-branch legacy policies land. The legacy Records app itself is not restricted by this.
+
+**ADR-013: Parents authorise through verified links, never through tables.** Guardians get no table grants at all (0006). They read via one SECURITY DEFINER function (0005) that returns only children with a verified, consented, unrevoked link, with names joined in. The child's branch, URL, or a guessed id never grants access.

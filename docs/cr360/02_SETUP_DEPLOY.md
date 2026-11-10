@@ -10,12 +10,12 @@ npm run dev                       # legacy app at /, ClickRobot 360 at /360
 ## Checks (all must pass before merging)
 ```bash
 npm run typecheck
-npm test                          # 45 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
+npm test                          # 61 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
-npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 10 auth-boundary checks
+npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 15 auth-boundary checks
 ```
-Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0004 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
+Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0006 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash
 npm run test:db
 ```
@@ -40,3 +40,11 @@ These steps write to production and need CEO approval and execution, in order:
 - Only the publishable/anon key ever reaches the browser.
 - `.env*` is git-ignored (except `.env.example`, which holds placeholders only).
 - No credentials in logs, analytics, AI prompts, commit messages or screenshots. GPS coordinates are not logged by API routes.
+
+## Activating the parent portal (after approval of 0005 + 0006)
+1. Apply **0006 first** (closes "any signed-in account reads everything"). Do not create any parent account before this.
+2. Apply **0005**.
+3. Agree the consent wording (Lao + English) with Lao counsel; give it a version label such as `consent-2026-12`.
+4. Parent receives an invitation / creates a Supabase Auth account (email for now; phone OTP later).
+5. Branch manager (or CEO) links that account to the child's **student code** and, after confirming the parent's identity in person, verifies it with the consent version. These functions require a signed-in manager/CEO session: they deliberately refuse to run from the Supabase SQL editor (no signed-in user there). The manager screen for linking/verifying is the next build step, so **parents cannot be onboarded until it ships**.
+6. Parent signs in and opens `/360/parent`. They see only verified children. Revoking (parent or manager) takes effect immediately.

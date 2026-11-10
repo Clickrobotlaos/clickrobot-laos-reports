@@ -46,4 +46,4 @@ export interface PartnerGrant {
   scopes: ("executive_report" | "distributions" | "investment")[];
 }
 
-export type Workspace = "ceo" | "manager" | "staff" | "parent" | "finance" | "schools";
+export type Workspace = "ceo" | "manager" | "students" | "staff" | "parent" | "finance" | "schools";

@@ -95,6 +95,7 @@ export function workspacesFor(v: Viewer | null | undefined): Workspace[] {
   const out: Workspace[] = [];
   if (hasRole(v, ["ceo"])) out.push("ceo");
   if (hasRole(v, ["ceo", "hr", "manager"])) out.push("manager");
+  if (hasRole(v, ["ceo", "manager"])) out.push("students");
   if (v.employeeId) out.push("staff");
   if ((v.guardianOf ?? []).length > 0 || hasRole(v, ["guardian"])) out.push("parent");
   if (hasRole(v, ["ceo", "finance"])) out.push("finance");
@@ -104,4 +105,11 @@ export function workspacesFor(v: Viewer | null | undefined): Workspace[] {
 
 export function canUseWorkspace(v: Viewer | null | undefined, w: Workspace): boolean {
   return workspacesFor(v).includes(w);
+}
+
+/** Branch filter for legacy student data: null = all branches (CEO), else the explicit granted branches. */
+export function studentBranchScope(v: Viewer | null | undefined): string[] | null {
+  if (!v) return [];
+  if (active(v).some((g) => g.role === "ceo" && g.branchId === null)) return null;
+  return [...new Set(active(v).filter((g) => g.role === "manager" && g.branchId).map((g) => g.branchId as string))];
 }

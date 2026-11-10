@@ -9,6 +9,10 @@ const cases = [
     const r = await fetch(`${B}/360/staff`, { redirect: "manual" });
     return r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/login");
   }],
+  ...["/360/students", "/360/students/TST-001", "/360/parent", "/360/manager", "/360/ceo"].map((path) => [`anon ${path} redirects to /login`, async () => {
+    const r = await fetch(`${B}${path}`, { redirect: "manual" });
+    return r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/login");
+  }]),
   ["anon GET /api/cr360/me → 401", async () => (await fetch(`${B}/api/cr360/me`)).status === 401],
   ["POST clock without Origin → 403", async () => (await fetch(`${B}/api/cr360/staff/clock`, { method: "POST", headers: j, body: clock })).status === 403],
   ["POST clock cross-site Origin → 403", async () => (await fetch(`${B}/api/cr360/staff/clock`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: clock })).status === 403],
