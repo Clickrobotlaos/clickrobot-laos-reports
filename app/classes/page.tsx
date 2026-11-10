@@ -36,7 +36,10 @@ function ClassesView() {
     setLoading(true);
     const [c, s, cfg] = await Promise.all([
       supabase.from("classes").select("*").order("day_of_week").order("start_time"),
-      supabase.from("users").select("id,name,position,role").eq("status", "Active").order("name"),
+      // Safe directory (no salary/bank/ID). Falls back to the legacy query until
+      // supabase/proposed/0002 is approved & applied, so this ships safely either way.
+      supabase.rpc("staff_directory").then((r) =>
+        r.error ? supabase.from("users").select("id,name,position,role").eq("status", "Active").order("name") : r),
       supabase.from("settings").select("value").eq("key", "class_fields").maybeSingle(),
     ]);
     setRows(c.data || []); setStaff(s.data || []);

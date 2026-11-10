@@ -1,3 +1,9 @@
+# ClickRobot Laos — Records + ClickRobot 360
+
+> **ClickRobot 360 (Phase 0/1 slice)** lives at `/360`. Start with [docs/cr360/00_AUDIT_AND_BLOCKERS.md](docs/cr360/00_AUDIT_AND_BLOCKERS.md) — it lists **critical security issues in the live database** that need approval to fix. Setup: [docs/cr360/02_SETUP_DEPLOY.md](docs/cr360/02_SETUP_DEPLOY.md). Architecture: [docs/cr360/01_ARCHITECTURE_AND_ADRS.md](docs/cr360/01_ARCHITECTURE_AND_ADRS.md).
+
+---
+
 # Self-Edit Lock
 
 When a co-admin (or any non-CEO user) edits their OWN profile, the following fields become **read-only**:

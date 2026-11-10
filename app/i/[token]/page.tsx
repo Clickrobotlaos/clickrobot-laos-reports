@@ -18,7 +18,11 @@ export default function PublicInvoicePage() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const { data: inv } = await supabase.from("invoices").select("*").eq("share_token", token).maybeSingle();
+      // Exact-token RPC (proposed migration 0002) — falls back to the legacy query until applied.
+      const viaRpc = await supabase.rpc("get_shared_invoice", { p_token: token }).maybeSingle();
+      const { data: inv } = viaRpc.error
+        ? await supabase.from("invoices").select("*").eq("share_token", token).maybeSingle()
+        : viaRpc;
       if (!inv) { setNotFound(true); return; }
       setInvoice(inv);
       const [b, p, settings] = await Promise.all([
