@@ -22,7 +22,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
   const scope = studentBranchScope(ctx.viewer);
   const sb = await supabaseServer();
-  const [{ packages, error: e1 }, names] = await Promise.all([loadScopedPackages(sb, scope), loadNames(sb)]);
+  const [{ packages, error: e1, truncated }, names] = await Promise.all([loadScopedPackages(sb, scope), loadNames(sb)]);
   const { rows: att, error: e2 } = await loadAttendanceFor(sb, packages.map((p) => p.id));
   const all = summariseStudents(packages, att);
   const counts = { low: all.filter((s) => s.low).length, mismatch: all.filter((s) => s.mismatch).length };
@@ -37,7 +37,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       <h1 className="cr-h1">{t.ws_students}</h1>
       <p className="cr-sub">{t.studentsSub} {scope === null ? t.scopeAll : t.scopeBranch}</p>
       <div className="cr-banner info">{t.legacyReadNote}</div>
-      {(e1 || e2) && <div className="cr-banner bad">{t.err_server_error}</div>}
+      {(e1 || e2 || truncated) && <div className="cr-banner bad">{t.err_server_error}</div>}
 
       <section className="cr-card">
         <form method="get" action="/360/students" className="cr-form" role="search" style={{ marginBottom: 12 }}>

@@ -5,14 +5,15 @@ import { businessDate, dict, formatDateTime } from "@/lib/cr360/i18n";
 import { Unauthorized, Planned } from "@/components/cr360/Blocks";
 import { BranchChart, type BranchRow } from "@/components/cr360/BranchChart";
 import { computeCeoKpis } from "@/lib/cr360/kpis";
+import { fetchAllPages } from "@/lib/cr360/paging";
 
 export const dynamic = "force-dynamic";
 
 /**
  * CEO overview built from EXISTING legacy Records tables (read-only, as the signed-in user).
  * No invented numbers: every figure is a count of real rows, stamped with the query time.
- * Money totals are intentionally omitted until the invoice/payment ledger (migration 0003) lands,
- * because legacy amounts are float `numeric` with per-row rates and no payment allocation.
+ * Money is shown separately on /360/finance with an explicit "not reconciled" label, because legacy
+ * amounts are `numeric` with per-row rates and no payment allocation (a payments ledger is not yet drafted).
  */
 export default async function CeoPage() {
   const ctx = await loadViewer();
@@ -21,19 +22,22 @@ export default async function CeoPage() {
   const sb = await supabaseServer();
   const today = businessDate();
 
+  type R<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
+  type Pkg = { id: string; branch_id: string | null; sessions_total: number | null; sessions_used: number | null; active: boolean | null };
+  type Row = { id: string; branch_id: string | null; status: string | null };
   const [branches, pkgs, att, leads, inv] = await Promise.all([
     sb.from("branches").select("id,name,active").order("name"),
-    sb.from("student_packages").select("id,branch_id,sessions_total,sessions_used,active"),
-    sb.from("attendance").select("id,status,package_id").eq("date", today),
-    sb.from("leads").select("id,branch_id,status"),
-    sb.from("invoices").select("id,branch_id,status"),
+    fetchAllPages<Pkg>((f, t2) => sb.from("student_packages").select("id,branch_id,sessions_total,sessions_used,active").order("id").range(f, t2) as unknown as R<Pkg>),
+    fetchAllPages<{ id: string; status: string | null }>((f, t2) => sb.from("attendance").select("id,status").eq("date", today).order("id").range(f, t2) as unknown as R<{ id: string; status: string | null }>),
+    fetchAllPages<Row>((f, t2) => sb.from("leads").select("id,branch_id,status").order("id").range(f, t2) as unknown as R<Row>),
+    fetchAllPages<Row>((f, t2) => sb.from("invoices").select("id,branch_id,status").order("id").range(f, t2) as unknown as R<Row>),
   ]);
   const asOf = new Date().toISOString();
-  const errors = [branches, pkgs, att, leads, inv].filter((r) => r.error).length;
+  const errors = (branches.error ? 1 : 0) + [pkgs, att, leads, inv].filter((r) => r.error || r.truncated).length;
 
   const k = computeCeoKpis({
-    branches: branches.data ?? [], packages: pkgs.data ?? [], attendanceToday: att.data ?? [],
-    leads: leads.data ?? [], invoices: inv.data ?? [],
+    branches: branches.data ?? [], packages: pkgs.rows, attendanceToday: att.rows,
+    leads: leads.rows, invoices: inv.rows,
   });
   const rows: BranchRow[] = k.byBranch;
 
@@ -64,8 +68,8 @@ export default async function CeoPage() {
             </table>
           </div>
         </section>
-        <Planned t={t} title="Revenue, cash & approvals" phase="Phase 1b / 4"
-          blockers={["Migration 0003 (invoice → payment → package ledger, minor units, rate snapshots)", "Migration 0004 (audited approvals inbox)", "P0 legacy security fixes (0001/0002) approved & applied"]} />
+        <Planned t={t} title="Reconciled revenue, cash & approvals inbox" phase="Phase 1b / 4"
+          blockers={["Payments ledger migration, not yet drafted (invoice → payment → package credit, minor units, rate snapshots)", "Unified approvals inbox (0004 covers HR requests only)", "P0 legacy security fixes (0001/0002) approved & applied"]} />
       </div>
     </>
   );

@@ -9,7 +9,7 @@ const cases = [
     const r = await fetch(`${B}/360/staff`, { redirect: "manual" });
     return r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/login");
   }],
-  ...["/360/students", "/360/students/TST-001", "/360/parent", "/360/manager", "/360/ceo", "/360/classes", "/360/crm"].map((path) => [`anon ${path} redirects to /login`, async () => {
+  ...["/360/students", "/360/students/TST-001", "/360/parent", "/360/manager", "/360/ceo", "/360/classes", "/360/crm", "/360/finance", "/360/staff", "/360/schools"].map((path) => [`anon ${path} redirects to /login`, async () => {
     const r = await fetch(`${B}${path}`, { redirect: "manual" });
     return r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/login");
   }]),

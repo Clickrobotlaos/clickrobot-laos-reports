@@ -7,6 +7,7 @@ import { funnel, slaFlag, STAGES, type Lead } from "@/lib/cr360/crm";
 import { loadNames } from "@/lib/cr360/legacy-students";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { LeadActions } from "@/components/cr360/LeadActions";
+import { fetchAllPages } from "@/lib/cr360/paging";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,16 @@ export default async function CrmPage() {
   if (!canUseWorkspace(ctx.viewer, "crm")) return <Unauthorized t={t} />;
   const scope = studentBranchScope(ctx.viewer);
   const sb = await supabaseServer();
-  let q = sb.from("leads").select("id,student_name,parent_name,phone,age,branch_id,program_id,source,status,lost_reason,trial_date,last_contact_at,created_at")
-    .order("created_at", { ascending: false }).limit(2000);
-  if (scope !== null) q = q.in("branch_id", scope.length ? scope : ["00000000-0000-0000-0000-000000000000"]);
-  const [{ data, error }, names] = await Promise.all([q, loadNames(sb)]);
-  const leads = (data ?? []) as Lead[];
+  const [res, names] = await Promise.all([
+    fetchAllPages<Lead>((from, to) => {
+      let q = sb.from("leads").select("id,student_name,parent_name,phone,age,branch_id,program_id,source,status,lost_reason,trial_date,last_contact_at,created_at").order("id");
+      if (scope !== null) q = q.in("branch_id", scope.length ? scope : ["00000000-0000-0000-0000-000000000000"]);
+      return q.range(from, to) as unknown as PromiseLike<{ data: Lead[] | null; error: unknown }>;
+    }),
+    loadNames(sb),
+  ]);
+  const error = res.error || res.truncated;
+  const leads = [...res.rows].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
   const f = funnel(leads);
   const now = new Date(), today = businessDate(now);
   const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
