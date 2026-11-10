@@ -20,6 +20,10 @@ const cases = [
   ["POST leave anon → 401", async () => (await fetch(`${B}/api/cr360/staff/leave`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
   ["POST approval decision cross-site → 403", async () => (await fetch(`${B}/api/cr360/approvals/decision`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
   ["POST approval decision anon → 401", async () => (await fetch(`${B}/api/cr360/approvals/decision`, { method: "POST", headers: { ...j, origin: B }, body: JSON.stringify({ kind: "leave", id: "60000000-0000-4000-8000-0000000000a2", action: "approve" }) })).status === 401],
+  ...["link", "verify", "revoke"].flatMap((r) => [
+    [`POST guardians/${r} cross-site → 403`, async () => (await fetch(`${B}/api/cr360/guardians/${r}`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
+    [`POST guardians/${r} anon → 401`, async () => (await fetch(`${B}/api/cr360/guardians/${r}`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
+  ]),
   ["locale rejects unknown value → 400", async () => (await fetch(`${B}/api/cr360/locale`, { method: "POST", headers: { ...j, origin: B }, body: JSON.stringify({ locale: "fr" }) })).status === 400],
   ["legacy /login still served → 200", async () => (await fetch(`${B}/login`)).status === 200],
 ];

@@ -6,6 +6,9 @@ import { dict, formatDateTime } from "@/lib/cr360/i18n";
 import { reconcilePackage } from "@/lib/cr360/students";
 import { loadAttendanceFor, loadNames, loadScopedPackages } from "@/lib/cr360/legacy-students";
 import { Unauthorized } from "@/components/cr360/Blocks";
+import { GuardianPanel, type LinkRow } from "@/components/cr360/GuardianPanel";
+import { guardianConsentVersion } from "@/lib/cr360/guardian-admin";
+import { rpcErrorCode } from "@/lib/cr360/rpc-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +43,14 @@ export default async function StudentDetail({ params }: { params: Promise<{ code
   );
   if (packages.length === 0) return notFound;
 
-  const [{ rows: att }, names] = await Promise.all([loadAttendanceFor(sb, packages.map((p) => p.id)), loadNames(sb)]);
+  const realCode = !code.startsWith("pkg:");
+  const [{ rows: att }, names, linkRes] = await Promise.all([
+    loadAttendanceFor(sb, packages.map((p) => p.id)),
+    loadNames(sb),
+    realCode ? sb.rpc("cr360_guardian_links_for", { p_student_code: code }) : Promise.resolve({ data: null, error: null }),
+  ]);
+  const linksEnabled = realCode && !(linkRes.error && rpcErrorCode(linkRes.error).code === "not_enabled");
+  const links = (linkRes.data ?? []) as LinkRow[];
   const name = [...packages].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0].student_name;
 
   return (
@@ -49,6 +59,14 @@ export default async function StudentDetail({ params }: { params: Promise<{ code
       <h1 className="cr-h1" style={{ marginTop: 8 }}>{name}</h1>
       <p className="cr-sub">{code.startsWith("pkg:") ? "" : `${t.colCode}: ${code}`}</p>
       <div className="cr-banner info">{t.legacyReadNote}</div>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="pa-h">
+        <h2 id="pa-h">{t.parentAccess}</h2>
+        {!realCode ? <p className="cr-muted">—</p>
+          : !linksEnabled ? <div className="cr-banner info">{t.guardianNotEnabled}</div>
+          : linkRes.error ? <div className="cr-banner bad">{t.err_server_error}</div>
+          : <GuardianPanel studentCode={code} links={links} consentVersion={guardianConsentVersion()} t={t} />}
+      </section>
 
       {packages.map((p) => {
         const r = reconcilePackage(p, att);

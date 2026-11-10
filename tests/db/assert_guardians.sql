@@ -93,3 +93,28 @@ do $$ declare denied boolean; begin
   perform t.ok(denied, '0005 anon cannot call guardian read function');
 end $$;
 rollback;
+
+-- ---------------------------------------------------------------- manager UI helpers
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a1');
+select t.ok(public.cr360_guardian_link_by_email('Guardian-1@Test.Invalid', 'TST-001', 'father') is not null, '0005 link by e-mail (case-insensitive) for own-branch child');
+do $$ declare code text; begin
+  begin perform public.cr360_guardian_link_by_email('nobody@test.invalid', 'TST-001'); code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = 'P0002', '0005 unknown e-mail is refused (no account is created)');
+  begin perform public.cr360_guardian_link_by_email('guardian-2@test.invalid', 'TST-002'); code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = '42501', '0005 e-mail link refused for another branch''s child (checked before lookup)');
+  begin perform public.cr360_guardian_link_by_email('guardian-1@test.invalid', 'TST-001'); code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = '23505', '0005 duplicate live link is rejected');
+end $$;
+select t.ok((select count(*) from public.cr360_guardian_links_for('TST-001')) = 1, '0005 manager lists links of own-branch child');
+select t.ok((select guardian_email from public.cr360_guardian_links_for('TST-001') limit 1) = 'guardian-1@test.invalid', '0005 listing shows the guardian e-mail to the manager');
+do $$ declare code text; begin
+  begin perform * from public.cr360_guardian_links_for('TST-002'); code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = '42501', '0005 manager cannot list another branch''s links');
+end $$;
+select t.claims('00000000-0000-0000-0000-0000000000e1');
+do $$ declare code text; begin
+  begin perform * from public.cr360_guardian_links_for('TST-001'); code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = '42501', '0005 guardian cannot use the manager listing');
+end $$;
+rollback;

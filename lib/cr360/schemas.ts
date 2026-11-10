@@ -52,3 +52,20 @@ export const DecisionInput = z.object({
   message: "reason required to reject", path: ["reason"],
 });
 export type DecisionInput = z.infer<typeof DecisionInput>;
+
+export const GuardianLinkInput = z.object({
+  studentCode: z.string().trim().min(1).max(80),
+  email: z.string().trim().toLowerCase().email().max(254),
+  relationship: z.enum(["mother", "father", "guardian", "grandparent", "other"]),
+}).strict();
+
+export const GuardianVerifyInput = z.object({
+  linkId: z.string().uuid(),
+  /** Must be ticked by the manager: identity confirmed in person + consent accepted. */
+  confirmed: z.literal(true),
+}).strict();
+
+export const GuardianRevokeInput = z.object({
+  linkId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(500),
+}).strict();

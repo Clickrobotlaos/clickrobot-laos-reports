@@ -143,4 +143,38 @@ grant execute on function public.cr360_guardian_verify(uuid, text) to authentica
 grant execute on function public.cr360_guardian_revoke(uuid, text) to authenticated;
 grant execute on function public.cr360_guardian_children() to authenticated;
 
+-- Link by e-mail for the manager UI. Links ONLY an existing auth account (never creates one).
+-- Note: reveals to an authorised manager whether an e-mail has an account (accepted; staff-only, audited).
+create or replace function public.cr360_guardian_link_by_email(p_email text, p_student_code text, p_relationship text default 'guardian')
+returns uuid language plpgsql volatile security definer set search_path = '' as $$
+declare v_guardian uuid;
+begin
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not cr360_authz.can_manage_student(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if p_email is null or position('@' in p_email) < 2 then raise exception 'invalid email' using errcode = '22023'; end if;
+  select id into v_guardian from auth.users where lower(email) = lower(trim(p_email)) limit 1;
+  if v_guardian is null then raise exception 'no account for this email' using errcode = 'P0002'; end if;
+  return public.cr360_guardian_link(v_guardian, p_student_code, p_relationship);
+end $$;
+
+-- Links of one student, for the manager UI (CEO or the student's branch manager only).
+drop function if exists public.cr360_guardian_links_for(text);
+create function public.cr360_guardian_links_for(p_student_code text)
+returns table (id uuid, guardian_email text, relationship text, created_at timestamptz,
+               verified_at timestamptz, consent_version text, revoked_at timestamptz, revoke_reason text)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not cr360_authz.can_manage_student(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  return query
+    select l.id, u.email::text, l.relationship, l.created_at, l.verified_at, l.consent_version, l.revoked_at, l.revoke_reason
+    from public.cr360_guardian_links l left join auth.users u on u.id = l.guardian_user_id
+    where l.student_code = p_student_code
+    order by l.revoked_at nulls first, l.created_at desc;
+end $$;
+
+revoke all on function public.cr360_guardian_link_by_email(text, text, text) from public, anon;
+revoke all on function public.cr360_guardian_links_for(text) from public, anon;
+grant execute on function public.cr360_guardian_link_by_email(text, text, text) to authenticated;
+grant execute on function public.cr360_guardian_links_for(text) to authenticated;
+
 commit;
