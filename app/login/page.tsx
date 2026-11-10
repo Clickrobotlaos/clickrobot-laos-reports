@@ -4,6 +4,20 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCompanyPublic } from "@/lib/company";
 
+/** Where to land after sign-in. Parent-only accounts go to their portal; everyone else keeps the legacy home.
+ * Any failure (no ClickRobot 360 membership, network error) falls back to "/" — identical to before. */
+async function landingPath(): Promise<string> {
+  try {
+    const r = await fetch("/api/cr360/me", { cache: "no-store" });
+    if (!r.ok) return "/";
+    const me = await r.json();
+    const ws: string[] = Array.isArray(me.workspaces) ? me.workspaces : [];
+    return ws.length > 0 && ws.every((w) => w === "parent") ? "/360/parent" : "/";
+  } catch {
+    return "/";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const company = useCompanyPublic();
@@ -13,7 +27,7 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => { if (data.user) router.replace("/"); });
+    supabase.auth.getUser().then(async ({ data }) => { if (data.user) router.replace(await landingPath()); });
   }, [router]);
 
   async function signIn(e: React.FormEvent) {
@@ -22,7 +36,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
     setBusy(false);
     if (error) { setErr(error.message); return; }
-    router.replace("/");
+    router.replace(await landingPath());
   }
 
   const name = company.name || "ClickRobot Laos";

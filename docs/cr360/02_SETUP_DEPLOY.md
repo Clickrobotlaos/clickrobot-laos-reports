@@ -10,10 +10,10 @@ npm run dev                       # legacy app at /, ClickRobot 360 at /360
 ## Checks (all must pass before merging)
 ```bash
 npm run typecheck
-npm test                          # 61 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
+npm test                          # 98 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
-npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 15 auth-boundary checks
+npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 28 auth-boundary checks
 ```
 Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0006 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash
@@ -44,7 +44,8 @@ These steps write to production and need CEO approval and execution, in order:
 ## Activating the parent portal (after approval of 0005 + 0006)
 1. Apply **0006 first** (closes "any signed-in account reads everything"). Do not create any parent account before this.
 2. Apply **0005**.
-3. Agree the consent wording (Lao + English) with Lao counsel; give it a version label such as `consent-2026-12`.
-4. Parent receives an invitation / creates a Supabase Auth account (email for now; phone OTP later).
-5. Branch manager (or CEO) links that account to the child's **student code** and, after confirming the parent's identity in person, verifies it with the consent version. These functions require a signed-in manager/CEO session: they deliberately refuse to run from the Supabase SQL editor (no signed-in user there). The manager screen for linking/verifying is the next build step, so **parents cannot be onboarded until it ships**.
-6. Parent signs in and opens `/360/parent`. They see only verified children. Revoking (parent or manager) takes effect immediately.
+3. Agree the consent wording (Lao + English) with Lao counsel and give it a version label, e.g. `consent-2026-12`. Set it as the server environment variable `CR360_GUARDIAN_CONSENT_VERSION` (Vercel project settings). **While unset, managers can create pending links but nobody can verify them**, so the portal stays closed.
+4. The parent creates their own account on the sign-in page / is invited (email for now; phone OTP later).
+5. Branch manager (or CEO) opens `/360/students` → the student → **Parent access**, enters the parent's account e-mail and relationship. This creates a *pending* link that grants nothing.
+6. After checking the parent's identity in person and confirming they accepted the consent text, the manager ticks the confirmation and presses **Verify**. The consent version is taken from server config and recorded with the link.
+7. The parent signs in and lands on `/360/parent`, seeing only verified children. Either side can revoke; access ends immediately. Every step is audited.

@@ -32,12 +32,12 @@ Browser (Lao/English, mobile-first)
 | `lib/cr360/schemas.ts` | Zod API contracts (`.strict()`, rejects ownership fields) |
 | `lib/cr360/i18n.ts` | `en` / `lo` dictionaries, Asia/Vientiane business dates |
 | `lib/cr360/viewer.ts`, `supabase-server.ts`, `api.ts` | Server-only auth context and helpers |
-| `app/360/**` | Role workspaces, incl. `/360/students` (CEO/manager, read-only legacy ledger and reconciliation) and `/360/parent` (verified guardians) |
-| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision` |
+| `app/360/**` | Role workspaces: `ceo`, `manager`, `students` (+ guardian link admin), `classes` (timetable, 2.5D fill), `crm` (Kanban), `finance` (operational, unreconciled), `staff`, `parent`, `schools` |
+| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision`, `guardians/{link,verify,revoke}`, `crm/lead-action` |
 | `components/cr360/**` | Shell (rail + mobile bottom nav), TimeClock, RequestForms, BranchChart |
 | `supabase/proposed/**` | Migrations + rollbacks awaiting approval |
 | `supabase/tests/rls_negative_tests.sql` | Staging-only RLS negative tests (self-rolling-back) |
-| `tests/unit/**` | Vitest (61 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
+| `tests/unit/**` | Vitest (98 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
 | `tests/db/**` | Local Postgres harness: schema-only production replica, baseline exploit reproduction, migration/rollback verification |
 
 ## ADRs
@@ -78,3 +78,7 @@ Browser (Lao/English, mobile-first)
 **ADR-012: Students are keyed by the legacy `student_id` code; balances are rebuilt from attendance.** Legacy has no students table. `/360/students` groups packages by code and never merges by name. It rebuilds each package ledger from attendance rows and flags any package whose stored `sessions_used` counter disagrees (0 of 182 today). Because legacy RLS lets any staff member read all packages, the branch filter in `lib/cr360/legacy-students.ts` is the effective boundary for managers in `/360` until per-branch legacy policies land. The legacy Records app itself is not restricted by this.
 
 **ADR-013: Parents authorise through verified links, never through tables.** Guardians get no table grants at all (0006). They read via one SECURITY DEFINER function (0005) that returns only children with a verified, consented, unrevoked link, with names joined in. The child's branch, URL, or a guessed id never grants access.
+
+**ADR-014: Page through every bulk read.** Supabase caps each response at its max-rows setting (1000 by default) regardless of `.limit()`. All `/360` bulk reads use `fetchAllPages` with a stable `id` order; hitting the safety cap shows an error instead of a silently short total.
+
+**ADR-015: Write to legacy tables only where the legacy app already does, with the same semantics.** The CRM stage moves replicate the Records app's exact field changes, add server-side branch scoping, and guard against races with a conditional UPDATE on the status the user saw. Conversions that need several records (trial booking, registration/payment) stay in the Records app until a transactional RPC exists.

@@ -70,6 +70,6 @@ Audit method: Supabase security advisor + read-only `SELECT`s on `pg_policies`, 
 | No secrets in client bundle | **Pass.** Build scanned; no service-role key exists in the codebase |
 | Verified GPS entrance coordinates | **Blocked.** On-site verification required |
 | No broad salary/bank reads via legacy tables/views | **Fail.** P0-3, P1-6 fixed in 0002/0006 (harness-verified, awaiting approval); P1-5 views still open |
-| Guardian isolation (no cross-child leaks) | **Ready, not live.** 0005 verified links plus 0006: 20 harness checks (guessed ids, unverified/revoked links, other families, other branches). Needs approval and a Lao consent text |
+| Guardian isolation (no cross-child leaks) | **Ready, not live.** 0005 verified links plus 0006: 29 harness checks (guessed ids, unverified/revoked links, other families, other branches). Needs approval and a Lao consent text |
 | Idempotent session deductions, protected approvals | **Partial.** Legacy already blocks double debit (verified). Audited approvals (0004) and approve/reject UI are built and harness-tested, but switched off until 0004 is applied |
 | Backup/restore, a11y, pen-test, Lao legal review, CEO sign-off | **Not started** |
