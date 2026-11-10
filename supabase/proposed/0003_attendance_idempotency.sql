@@ -3,24 +3,17 @@
 -- Rollback: 0003_attendance_idempotency.rollback.sql
 --
 -- Legacy attendance mutates student_packages.sessions_used directly (trigger
--- attendance_apply_change) and nothing prevents two "Present" rows for the same package,
--- class and date -> a double tap deducts two sessions. This migration is the minimal,
--- compatible step toward the ledger model in lib/cr360/ledger.ts:
---   1. DB-enforced idempotency: at most one Present per (package, class, date).
---   2. Append-only audit of every attendance change (who/when/before/after), so the
---      sessions_used counter can be reconciled and later replaced by a derived balance.
+-- attendance_apply_change), and edits/deletes leave no history.
+-- CORRECTION (verified by tests/db harness): production ALREADY enforces
+-- UNIQUE (package_id, date) on public.attendance, so a double tap cannot double-debit.
+-- An earlier draft of this file added a redundant unique index; it has been removed.
+-- This migration now only adds:
+--   * an append-only audit of every attendance change (who/when/before/after), so the
+--     sessions_used counter can be reconciled and later replaced by a derived balance.
 -- Does NOT modify or delete existing rows.
 -- =====================================================================================
 
--- PRE-FLIGHT (must return 0 rows before applying; if not, resolve duplicates by review — never auto-delete):
---   select package_id, class_id, date, count(*) from public.attendance
---   where status = 'Present' group by 1,2,3 having count(*) > 1;
-
 begin;
-
-create unique index if not exists attendance_one_present_per_class_day
-  on public.attendance (package_id, coalesce(class_id, '00000000-0000-0000-0000-000000000000'::uuid), date)
-  where status = 'Present';
 
 create schema if not exists cr360_audit;
 revoke all on schema cr360_audit from public, anon, authenticated;

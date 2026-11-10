@@ -1,0 +1,175 @@
+-- Legacy security findings P0-1..P2-8 + no-regression checks for the legacy Records app.
+-- Run with: psql -v ON_ERROR_STOP=1 -v mode=baseline|fixed -f tests/db/assert_legacy.sql
+\set QUIET on
+select set_config('t.mode', :'mode', false);
+
+-- ---------------------------------------------------------------- P0-1 anon data wipe
+-- "Fixed" = the GUARD refuses the call (SQLSTATE 42501), independent of data. In production today
+-- the guard is bypassed and the wipe only fails later, by accident, on a foreign key reference.
+begin;
+set local role anon; select t.claims(null);
+do $$ declare code text;
+begin
+  begin perform public.admin_deep_reset(); code := 'completed';
+  exception when others then code := sqlstate; end;
+  perform t.sec(code = '42501', 'P0-1 anon is refused by admin_deep_reset guard (got ' || code || ')');
+end $$;
+rollback;
+
+begin;
+set local role anon; select t.claims(null);
+do $$ declare code text;
+begin
+  begin perform public.admin_nuclear_reset(); code := 'completed';
+  exception when others then code := sqlstate; end;
+  perform t.sec(code = '42501', 'P0-1 anon is refused by admin_nuclear_reset guard (got ' || code || ')');
+end $$;
+rollback;
+
+-- Demonstrate real data loss once the accidental FK blockers are absent (rolled back).
+begin;
+update public.users set branch_id = null;
+delete from public.cr360_hr_leave_requests; delete from public.cr360_hr_employees; delete from public.cr360_hr_memberships;
+delete from public.classes;
+set local role anon; select t.claims(null);
+do $$ declare code text;
+begin
+  begin perform public.admin_deep_reset(); code := 'completed';
+  exception when others then code := sqlstate; end;
+  perform t.sec(code = '42501', 'P0-1 anon cannot wipe data when no FK references block it (got ' || code || ')');
+end $$;
+reset role;
+select t.sec((select count(*) from public.settings) = 1, 'P0-1 settings survive the anon call');
+rollback;
+
+-- regression: a real admin still passes the guard. (The reset itself may then fail on FK references —
+-- the same happens in production today; that is a separate legacy defect, not changed here.)
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c0');
+do $$ declare code text;
+begin
+  begin perform public.admin_deep_reset(); code := 'completed';
+  exception when others then code := sqlstate; end;
+  perform t.ok(code <> '42501', 'admin still passes the reset guard (outcome: ' || code || ')');
+end $$;
+rollback;
+
+-- regression: signed-in staff is refused by the guard in every mode
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+do $$ declare code text;
+begin
+  begin perform public.admin_deep_reset(); code := 'completed';
+  exception when others then code := sqlstate; end;
+  perform t.ok(code <> 'completed', 'signed-in staff cannot complete admin_deep_reset (got ' || code || ')');
+end $$;
+rollback;
+
+-- ---------------------------------------------------------------- P0-2 self role escalation
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+do $$ declare blocked boolean; n int;
+begin
+  begin
+    update public.users set role = 'admin' where id = auth.uid();
+    get diagnostics n = row_count; blocked := (n = 0);
+  exception when insufficient_privilege then blocked := true; end;
+  perform t.sec(blocked, 'P0-2 staff cannot make themselves admin');
+end $$;
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+do $$ declare blocked boolean; n int;
+begin
+  begin
+    update public.users set base_salary = 5000000 where id = auth.uid();
+    get diagnostics n = row_count; blocked := (n = 0);
+  exception when insufficient_privilege then blocked := true; end;
+  perform t.sec(blocked, 'P0-2 staff cannot raise own salary');
+end $$;
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
+do $$ declare blocked boolean; n int;
+begin
+  begin
+    update public.users set role = 'admin' where id = '00000000-0000-0000-0000-0000000000a2';
+    get diagnostics n = row_count; blocked := (n = 0);
+  exception when insufficient_privilege then blocked := true; end;
+  perform t.sec(blocked, 'P0-2 co_admin cannot grant admin role');
+end $$;
+rollback;
+
+-- regressions for documented legacy behaviour
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+do $$ declare n int; begin
+  update public.users set phone = '020-TEST' where id = auth.uid(); get diagnostics n = row_count;
+  perform t.ok(n = 1, 'staff can still edit own phone');
+end $$;
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
+do $$ declare n int; begin
+  update public.users set base_salary = 333 where id = '00000000-0000-0000-0000-0000000000a2'; get diagnostics n = row_count;
+  perform t.ok(n = 1, 'co_admin can still edit another user''s salary (self-edit-lock README)');
+end $$;
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c0');
+do $$ declare n int; begin
+  update public.users set role = 'co_admin' where id = '00000000-0000-0000-0000-0000000000a2'; get diagnostics n = row_count;
+  perform t.ok(n = 1, 'admin can still change another user''s role');
+end $$;
+rollback;
+
+-- ---------------------------------------------------------------- P0-3 colleague salary read
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+select t.sec((select count(*) from public.users where id <> auth.uid()) = 0, 'P0-3 staff cannot read colleagues'' salary/bank rows');
+select t.ok((select count(*) from public.users where id = auth.uid()) = 1, 'staff can read own users row (app-context)');
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select count(*) from public.users) = 5, 'co_admin still reads all users (staff page)');
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000f1');
+select t.ok((select count(*) from public.users) = 5, 'finance still reads all users (payroll page) — OWNER DECISION');
+rollback;
+
+-- ---------------------------------------------------------------- P1-4 anon invoice listing
+begin;
+set local role anon; select t.claims(null);
+select t.sec((select count(*) from public.invoices) = 0, 'P1-4 anon cannot list shared invoices');
+rollback;
+
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+select t.ok((select count(*) from public.invoices) = 2, 'signed-in staff still read invoices (legacy p_invoices_read)');
+rollback;
+
+-- ---------------------------------------------------------------- attendance double-debit (already prevented by legacy UNIQUE(package_id,date))
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+insert into public.attendance (package_id, class_id, date, status) values
+  ('30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '2026-11-10', 'Present');
+select t.ok((select sessions_used from public.student_packages where id = '30000000-0000-0000-0000-000000000001') = 1, 'first Present debits exactly one session');
+do $$ declare blocked boolean;
+begin
+  begin
+    insert into public.attendance (package_id, class_id, date, status) values
+      ('30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '2026-11-10', 'Present');
+    blocked := false;
+  exception when unique_violation then blocked := true; end;
+  perform t.ok(blocked, 'duplicate Present for same package/day is rejected (legacy UNIQUE constraint)');
+end $$;
+select t.ok((select sessions_used from public.student_packages where id = '30000000-0000-0000-0000-000000000001') = 1,
+  'double tap still debits exactly one session');
+rollback;

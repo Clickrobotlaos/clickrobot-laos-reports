@@ -45,8 +45,13 @@ begin if not cond then raise exception 'RLS TEST FAILED: %', msg; end if; raise 
 
 -- 1. Anonymous cannot read HR tables or vault ------------------------------------------
 set local role anon;
-select pg_temp.expect((select count(*) from public.cr360_hr_employees) = 0, 'anon reads no employees');
-select pg_temp.expect((select count(*) from public.cr360_hr_leave_requests) = 0, 'anon reads no leave');
+-- v0.4 revokes table privileges from anon, so "permission denied" (stronger than 0 rows) is expected.
+do $$ declare n int; begin
+  begin select count(*) into n from public.cr360_hr_employees; exception when insufficient_privilege then n := 0; end;
+  if n <> 0 then raise exception 'RLS TEST FAILED: anon reads employees'; end if; raise notice 'PASS: anon reads no employees';
+  begin select count(*) into n from public.cr360_hr_leave_requests; exception when insufficient_privilege then n := 0; end;
+  if n <> 0 then raise exception 'RLS TEST FAILED: anon reads leave'; end if; raise notice 'PASS: anon reads no leave';
+end $$;
 do $$ begin perform 1 from cr360_vault.contracts; raise exception 'RLS TEST FAILED: anon read vault'; exception when insufficient_privilege then raise notice 'PASS: anon denied vault'; end $$;
 reset role;
 
@@ -74,8 +79,11 @@ do $$ begin
   raise exception 'RLS TEST FAILED: staff self-approved';
 exception when insufficient_privilege then raise notice 'PASS: staff cannot self-approve'; end $$;
 -- cannot update (no update policy)
-update public.cr360_hr_leave_requests set status = 'approved';
-select pg_temp.expect((select count(*) from public.cr360_hr_leave_requests where status = 'approved') = 0, 'staff cannot update leave status');
+-- No UPDATE grant at all (stronger than an RLS filter): expect permission denied.
+do $$ begin
+  update public.cr360_hr_leave_requests set status = 'approved';
+  raise exception 'RLS TEST FAILED: staff could update leave status';
+exception when insufficient_privilege then raise notice 'PASS: staff cannot update leave status'; end $$;
 -- cannot forge punches directly
 do $$ begin
   insert into public.cr360_hr_attendance_events (employee_id, branch_id, kind, distance_m, reported_accuracy_m)

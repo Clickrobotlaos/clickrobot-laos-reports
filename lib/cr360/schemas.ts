@@ -42,3 +42,13 @@ export type ClockInput = z.infer<typeof ClockInput>;
 export type LeaveInput = z.infer<typeof LeaveInput>;
 export type CorrectionInput = z.infer<typeof CorrectionInput>;
 export type OtInput = z.infer<typeof OtInput>;
+
+export const DecisionInput = z.object({
+  kind: z.enum(["leave", "ot", "correction"]),
+  id: z.string().uuid(),
+  action: z.enum(["approve", "reject"]),
+  reason: z.string().trim().max(1000).optional(),
+}).strict().refine((v) => v.action === "approve" || (v.reason?.length ?? 0) >= 3, {
+  message: "reason required to reject", path: ["reason"],
+});
+export type DecisionInput = z.infer<typeof DecisionInput>;

@@ -33,11 +33,12 @@ Browser (Lao/English, mobile-first)
 | `lib/cr360/i18n.ts` | `en` / `lo` dictionaries, Asia/Vientiane business dates |
 | `lib/cr360/viewer.ts`, `supabase-server.ts`, `api.ts` | Server-only auth context and helpers |
 | `app/360/**` | Role workspaces |
-| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}` |
+| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision` |
 | `components/cr360/**` | Shell (rail + mobile bottom nav), TimeClock, RequestForms, BranchChart |
 | `supabase/proposed/**` | Migrations + rollbacks awaiting approval |
 | `supabase/tests/rls_negative_tests.sql` | Staging-only RLS negative tests (self-rolling-back) |
-| `tests/unit/**` | Vitest (41 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
+| `tests/unit/**` | Vitest (45 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
+| `tests/db/**` | Local Postgres harness: schema-only production replica, baseline exploit reproduction, migration/rollback verification |
 
 ## ADRs
 
@@ -51,7 +52,7 @@ Browser (Lao/English, mobile-first)
 
 **ADR-005: Staff never see money fields by default.** This is the owner's decision. StaffOS queries select no money columns; `redact.ts` strips them defensively; `canReadPayroll` denies staff, teachers, finance-by-role and partners.
 
-**ADR-006: Ledger, not counters.** Session balance is derived from append-only entries. Attendance debit is idempotent per (student, class session); undo is a compensating credit with a reason. Legacy `sessions_used` stays until migrated; `0003` adds DB idempotency and audit to it now.
+**ADR-006: Ledger, not counters.** Session balance is derived from append-only entries. Attendance debit is idempotent per (student, class session); undo is a compensating credit with a reason. Legacy `sessions_used` stays until migrated. Its existing `UNIQUE(package_id,date)` already prevents double debit; `0003` adds an append-only audit.
 
 **ADR-007: Money as bigint minor units plus rate snapshots.** No float arithmetic and no "current rate" assumptions. CEO compensation and partner distributions live in separate confidential finance.
 
@@ -71,3 +72,5 @@ Browser (Lao/English, mobile-first)
 | `invoices` / `income_records` (float numeric) | invoices/payments/allocations in minor units | Convert with recorded `rate_to_lak` as snapshot; never recompute |
 | `leave_requests` (legacy) | `cr360_hr_leave_requests` | Migrate history read-only after membership bootstrap |
 | `leads`, `lead_activities` | CRM (Phase 3) | Add branch scoping and consent |
+
+**ADR-011: Prove migrations on a schema replica before asking for approval.** There is no staging project yet, so `tests/db/run.sh` rebuilds the production schema from a read-only catalog snapshot in a throwaway local Postgres. It reproduces each finding, then verifies fix, idempotency and rollback. The harness disproved one of my own audit findings (P2-8) and two bugs in the staging RLS tests, which is why it exists.

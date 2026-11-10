@@ -4,11 +4,12 @@ import { canUseWorkspace } from "@/lib/cr360/access";
 import { dict } from "@/lib/cr360/i18n";
 import { safeDirectoryRow } from "@/lib/cr360/redact";
 import { Unauthorized, StatusBadge } from "@/components/cr360/Blocks";
+import { DecisionButtons } from "@/components/cr360/DecisionButtons";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Manager / HR / CEO branch view. RLS (cr360_authz.can_access_branch) restricts managers to their
+ * Manager / HR / CEO branch view. Approve/reject calls the audited DB function from migration 0004. RLS (cr360_authz.can_access_branch) restricts managers to their
  * own branch; CEO/HR see all. Directory uses an explicit safe-column allow-list (no money/bank/ID).
  */
 export default async function ManagerPage() {
@@ -26,9 +27,9 @@ export default async function ManagerPage() {
   const staff = (emps.data ?? []).map(safeDirectoryRow) as { id: string; display_name: string; position: string; employment_status: string; employee_code: string | null }[];
   const name = new Map(staff.map((s) => [s.id, s.display_name]));
   const queue = [
-    ...(leave.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, kind: t.leave, detail: `${r.leave_type} · ${r.start_date} → ${r.end_date}`, status: r.status })),
-    ...(ot.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, kind: t.ot, detail: `${r.work_date} · ${r.minutes} ${t.minutes}`, status: r.status })),
-    ...(corr.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, kind: t.correction, detail: `${r.work_date} · ${r.correction_type}`, status: r.status })),
+    ...(leave.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "leave" as const, kind: t.leave, detail: `${r.leave_type} · ${r.start_date} → ${r.end_date}`, status: r.status })),
+    ...(ot.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "ot" as const, kind: t.ot, detail: `${r.work_date} · ${r.minutes} ${t.minutes}`, status: r.status })),
+    ...(corr.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "correction" as const, kind: t.correction, detail: `${r.work_date} · ${r.correction_type}`, status: r.status })),
   ];
 
   return (
@@ -40,7 +41,12 @@ export default async function ManagerPage() {
           <div className="cr-banner info">{t.approvalsPending}</div>
           {queue.length === 0 ? <p className="cr-muted">{t.noRequests}</p> : (
             <ul className="cr-list">{queue.map((q) => (
-              <li key={q.id}><span><b>{name.get(q.who) ?? "—"}</b> · {q.kind} · {q.detail}</span><StatusBadge status={q.status} t={t} /></li>
+              <li key={q.id}>
+                <span><b>{name.get(q.who) ?? "—"}</b> · {q.kind} · {q.detail}</span><StatusBadge status={q.status} t={t} />
+                {q.who === ctx.employee?.id
+                  ? <p className="cr-muted" style={{ width: "100%", margin: 0 }}>{t.ownRequest}</p>
+                  : <DecisionButtons kind={q.k} id={q.id} t={t} />}
+              </li>
             ))}</ul>
           )}
         </section>
