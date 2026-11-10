@@ -69,3 +69,11 @@ export const GuardianRevokeInput = z.object({
   linkId: z.string().uuid(),
   reason: z.string().trim().min(3).max(500),
 }).strict();
+
+export const LeadActionInput = z.object({
+  leadId: z.string().uuid(),
+  action: z.enum(["contacted", "attended", "noshow", "lost", "reopen"]),
+  /** Status the user saw; the update only applies if the lead is still in it. */
+  expectedStatus: z.enum(["New", "Contacted", "TrialBooked", "TrialAttended", "Registered", "Lost"]),
+  reason: z.string().trim().max(300).optional(),
+}).strict();

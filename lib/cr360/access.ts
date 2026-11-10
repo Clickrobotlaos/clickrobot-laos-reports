@@ -95,7 +95,7 @@ export function workspacesFor(v: Viewer | null | undefined): Workspace[] {
   const out: Workspace[] = [];
   if (hasRole(v, ["ceo"])) out.push("ceo");
   if (hasRole(v, ["ceo", "hr", "manager"])) out.push("manager");
-  if (hasRole(v, ["ceo", "manager"])) out.push("students");
+  if (hasRole(v, ["ceo", "manager"])) out.push("students", "classes", "crm");
   if (v.employeeId) out.push("staff");
   if ((v.guardianOf ?? []).length > 0 || hasRole(v, ["guardian"])) out.push("parent");
   if (hasRole(v, ["ceo", "finance"])) out.push("finance");

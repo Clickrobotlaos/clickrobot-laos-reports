@@ -103,3 +103,23 @@
 .cr-gauge { height: 10px; border-radius: 999px; background: var(--c-surface2); overflow: hidden; margin-top: 8px; }
 .cr-gauge > span { display: block; height: 100%; background: linear-gradient(90deg, var(--c-teal), var(--c-lime)); }
 .cr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 2.5D classroom fill — isometric seat map rendered from booking records (not surveillance). */
+.cr-room-wrap { display: grid; place-items: center; padding: 0; margin: -22px 0 -14px; overflow: hidden; }
+.cr-room { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: var(--c-surface2);
+  border: 1px solid var(--c-line); transform: rotateX(52deg) rotateZ(-38deg); transform-style: preserve-3d;
+  box-shadow: 18px 18px 0 -6px color-mix(in srgb, var(--c-ink) 10%, transparent); }
+.cr-seat { width: 26px; height: 26px; border-radius: 7px; background: var(--c-surface); border: 2px solid var(--c-line);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--c-ink) 18%, transparent); transition: transform .2s ease; }
+.cr-seat.filled { background: var(--c-teal); border-color: var(--c-teal); box-shadow: 0 8px 0 color-mix(in srgb, var(--c-teal) 55%, #000); transform: translateZ(4px); }
+.cr-seat.over { background: var(--c-bad); border-color: var(--c-bad); box-shadow: 0 8px 0 color-mix(in srgb, var(--c-bad) 55%, #000); }
+@media (prefers-reduced-motion: reduce) { .cr-seat { transition: none; } }
+.cr-fill { height: 8px; border-radius: 999px; background: var(--c-surface2); overflow: hidden; margin-top: 6px; }
+.cr-fill > span { display: block; height: 100%; background: var(--c-teal); }
+.cr-fill.full > span { background: var(--c-warn); }
+.cr-fill.over > span { background: var(--c-bad); }
+.cr-week { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 1100px) { .cr-week { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+.cr-week h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--c-ink2); margin: 0 0 6px; }
+.cr-slot { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; background: var(--c-surface); font-size: 13px; }
+.cr-slot b { display: block; font-size: 13.5px; }
