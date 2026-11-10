@@ -14,6 +14,7 @@ npm test                          # 98 unit tests (access, privacy, ledger, book
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
 npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 28 auth-boundary checks
+npm run test:render               # 36 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
 ```
 Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0006 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash

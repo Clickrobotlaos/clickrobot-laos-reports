@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:smoke": "node tests/e2e/boundary-smoke.mjs",
-    "test:db": "bash tests/db/run.sh"
+    "test:db": "bash tests/db/run.sh",
+    "test:render": "bash tests/e2e/run-render.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

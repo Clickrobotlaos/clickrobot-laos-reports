@@ -52,7 +52,7 @@ export function GuardianPanel({ studentCode, links, consentVersion, t }: {
         <ul className="cr-list">{links.map((l) => {
           const state = l.revoked_at ? "revoked" : l.verified_at ? "verified" : "pending";
           return (
-            <li key={l.id} style={{ display: "grid", gap: 8 }}>
+            <li key={l.id} style={{ display: "grid", gap: 8, justifyContent: "stretch" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                 <span><b>{l.guardian_email ?? "—"}</b> · {l.relationship}</span>
                 <span className={`cr-badge ${state === "verified" ? "approved" : state === "revoked" ? "rejected" : "pending"}`}>
@@ -72,7 +72,7 @@ export function GuardianPanel({ studentCode, links, consentVersion, t }: {
                     <button type="button" className="cr-btn ghost" onClick={() => { setConfirming(null); setAgree(false); }}>{t.cancel}</button>
                   </div>
                 </div>
-              ) : <div><button type="button" className="cr-btn teal" onClick={() => { setConfirming(l.id); setAgree(false); setRevoking(null); }}>{t.verifyLink}</button></div>)}
+              ) : null)}
               {state !== "revoked" && (revoking === l.id ? (
                 <div className="cr-form">
                   <div className="cr-field"><label htmlFor={`r-${l.id}`}>{t.revokeReason}</label>
@@ -84,7 +84,15 @@ export function GuardianPanel({ studentCode, links, consentVersion, t }: {
                     <button type="button" className="cr-btn ghost" onClick={() => { setRevoking(null); setReason(""); }}>{t.cancel}</button>
                   </div>
                 </div>
-              ) : <div><button type="button" className="cr-btn ghost" onClick={() => { setRevoking(l.id); setConfirming(null); }}>{t.revokeLink}</button></div>)}
+              ) : null)}
+              {state !== "revoked" && confirming !== l.id && revoking !== l.id && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {state === "pending" && consentVersion && (
+                    <button type="button" className="cr-btn teal" onClick={() => { setConfirming(l.id); setAgree(false); setRevoking(null); }}>{t.verifyLink}</button>
+                  )}
+                  <button type="button" className="cr-btn ghost" onClick={() => { setRevoking(l.id); setConfirming(null); }}>{t.revokeLink}</button>
+                </div>
+              )}
               {state === "revoked" && l.revoke_reason && <span className="cr-muted">{l.revoke_reason}</span>}
             </li>
           );

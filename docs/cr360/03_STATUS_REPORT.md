@@ -68,10 +68,11 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | Unit (domain rules, access, contracts) | 98 | `npm test` |
 | Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 131 | `npm run test:db` |
 | Auth-boundary smoke against a production build | 28 | `npm run test:smoke` |
-| Visual check (seat map, Kanban; 1440/390 px; dark mode; no horizontal overflow) | manual screenshots | — |
+| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 36 | `npm run test:render` |
+| Visual review of every rendered page (desktop + phone, light + dark) | screenshots reviewed | — |
 
 ## Not verified (be aware)
-- **No screen behind sign-in has been seen in a real browser with a real account**: there were no test credentials. Server logic is unit- and harness-tested; layout of the new widgets was checked with static renders only.
+- **No screen has been used with a real account against the real database**: there were no test credentials. Every `/360` page *has* been rendered in a real browser against a fake Supabase with fictional data (`npm run test:render`), and the screenshots were reviewed. That review found and fixed two layout bugs (category bars not stretching, parent-link buttons stacking) and one unclear message (the "Low" balance banner). Real sign-in, real RLS through the API, and real data volumes still need a staging check.
 - Supabase Auth, PostgREST and Storage themselves are not in the local harness.
 - Lao translations need a native speaker's review.
 - GPS has never been tested on a real device at a branch.

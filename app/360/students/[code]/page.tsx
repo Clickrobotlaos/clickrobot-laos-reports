@@ -87,7 +87,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ code
             </div>
             {r.mismatch && <div className="cr-banner bad" role="status">{t.reconcileHint}</div>}
             {r.overdrawn && <div className="cr-banner bad" role="status">{t.overdrawn}</div>}
-            {!r.mismatch && !r.overdrawn && r.remaining <= 2 && p.active && <div className="cr-banner warn">{t.lowBalance}</div>}
+            {!r.mismatch && !r.overdrawn && r.remaining <= 2 && p.active && <div className="cr-banner warn">{t.lowBalanceBanner}</div>}
 
             <div className="cr-grid c2" style={{ marginTop: 12 }}>
               <div>

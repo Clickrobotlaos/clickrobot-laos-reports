@@ -79,7 +79,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <h2 id="fc-h">{t.byCategory}</h2>
           {s.expenseByCategory.length === 0 ? <p className="cr-muted">—</p> : (
             <ul className="cr-list">{s.expenseByCategory.map((c) => (
-              <li key={c.key} style={{ display: "grid", gap: 4 }}>
+              <li key={c.key} style={{ display: "grid", gap: 4, justifyContent: "stretch" }}>
                 <span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span>{c.key}</span><b>{fmt(c.lak)}</b></span>
                 <div className="cr-fill" aria-hidden="true"><span style={{ width: `${maxCat > 0n ? Number((c.lak * 100n) / maxCat) : 0}%` }} /></div>
               </li>
