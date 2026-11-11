@@ -82,3 +82,16 @@ export const MarkPaidInput = z.object({
   invoiceId: z.string().uuid(),
   method: z.enum(["Cash", "Bank Transfer", "QR Payment", "Other"]),
 }).strict();
+
+export const ShiftCreateInput = z.object({
+  employeeId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  overnight: z.boolean().default(false),
+}).strict();
+
+export const ShiftCancelInput = z.object({
+  shiftId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(300),
+}).strict();

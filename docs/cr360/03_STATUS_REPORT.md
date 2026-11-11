@@ -19,9 +19,10 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 0004 | Audited approve/reject for leave/OT/corrections | No approval path exists | Same |
 | 0006 | Legacy data readable only by active staff; terminated staff lose access | First parent account would read everything; ex-staff keep read+write | Same |
 | 0005 | Verified parent ↔ student links | Parent portal | 29 isolation checks |
+| 0008 | Shift planner (create/cancel shifts with overlap, no back-dating, audit) | Shifts can only be added in the SQL editor today, so StaffOS schedules and attendance % stay empty | 19 checks |
 | 0007 | Atomic, idempotent "mark invoice paid" + one income row per invoice | A double click records the payment twice; a failed step leaves income on an unpaid invoice | Duplicate reproduced, then closed; 23 payment checks |
 
-`npm run test:db` reproduces every issue and verifies every fix (157 passing assertions per run, 16 of which first reproduce the vulnerabilities on the unfixed schema) on a throwaway local copy of the production schema.
+`npm run test:db` reproduces every issue and verifies every fix (177 passing assertions per run, 16 of which first reproduce the vulnerabilities on the unfixed schema) on a throwaway local copy of the production schema.
 
 ## The 36 modules
 | # | Module | Status | What exists / what's missing |
@@ -43,7 +44,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 15 | WhatsApp/email | Not started | Needs WhatsApp Business account; will never mark "sent" without provider confirmation |
 | 16 | Service desk (absence/extension) | Not started | |
 | 17 | HR employee directory | **Live** | `/360/manager` branch staff, safe columns only |
-| 18 | GPS timekeeping, leave, OT | **Live (GPS on site approval)** | `/360/staff` check-in/out via deployed RPC with server time; leave/OT/correction requests. GPS refuses until each entrance is verified on site |
+| 18 | GPS timekeeping, shifts, leave, OT | **Live (GPS on site approval) + On approval (0004, 0008)** | `/360/staff` check-in/out via deployed RPC with server time; leave/OT/correction requests; manager shift planner (0008) and approvals (0004). GPS refuses until each entrance is verified on site |
 | 19 | Contracts & payroll | Not started | Vault tables exist (v0.4); needs Lao labour-law rules + two-person release |
 | 20 | Staff tasks & performance | Not started | |
 | 21 | Branches & HQ/franchise access | **Partial** | Branch scoping in every /360 page; franchise tenancy not modelled |
@@ -66,10 +67,10 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 ## Test evidence
 | Suite | Count | Command |
 |---|---|---|
-| Unit (domain rules, access, contracts) | 99 | `npm test` |
-| Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 157 | `npm run test:db` |
-| Auth-boundary smoke against a production build | 30 | `npm run test:smoke` |
-| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 37 | `npm run test:render` |
+| Unit (domain rules, access, contracts) | 108 | `npm test` |
+| Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 177 | `npm run test:db` |
+| Auth-boundary smoke against a production build | 34 | `npm run test:smoke` |
+| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 38 | `npm run test:render` |
 | Visual review of every rendered page (desktop + phone, light + dark) | screenshots reviewed | — |
 
 ## Not verified (be aware)
@@ -79,7 +80,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 - GPS has never been tested on a real device at a branch.
 
 ## Owner decisions needed
-1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005 and 0007 (before real payments are recorded).
+1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005, 0007 (before real payments are recorded) and 0008 (to start scheduling staff).
 2. Former staff: inactive/Terminated users lose all legacy access in 0006 — confirm.
 3. Should the finance role keep full access to staff salary records (0002 keeps it)?
 4. Is one class per package per day intended (blocks same-day makeup)?

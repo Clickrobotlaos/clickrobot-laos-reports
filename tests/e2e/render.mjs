@@ -27,6 +27,7 @@ const CASES = [
   ["ceo", "/360/schools", "School partners"],
   ["ceo", "/360/parent", NO_ACCESS],
   ["mgr", "/360/manager", "TEST Teacher A"],
+  ["mgr", "/360/manager", "Shift planner (next 14 days)"],
   ["mgr", "/360/students", "Showing your branch only."],
   ["mgr", "/360/students/TST-003", "Student not found, or not in your branch."],
   ["mgr", "/360/students/TST-001", "Parent access"],

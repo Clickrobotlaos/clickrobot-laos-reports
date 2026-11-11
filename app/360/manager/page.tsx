@@ -5,6 +5,8 @@ import { dict } from "@/lib/cr360/i18n";
 import { safeDirectoryRow } from "@/lib/cr360/redact";
 import { Unauthorized, StatusBadge } from "@/components/cr360/Blocks";
 import { DecisionButtons } from "@/components/cr360/DecisionButtons";
+import { ShiftPlanner, type PlannedShift } from "@/components/cr360/ShiftPlanner";
+import { formatDateTime } from "@/lib/cr360/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +20,24 @@ export default async function ManagerPage() {
   if (!canUseWorkspace(ctx.viewer, "manager")) return <Unauthorized t={t} />;
   const sb = await supabaseServer();
 
-  const [emps, leave, ot, corr] = await Promise.all([
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const until = new Date(now.getTime() + 14 * 864e5).toISOString();
+  const [emps, leave, ot, corr, shiftRes] = await Promise.all([
     sb.from("cr360_hr_employees").select("id,display_name,position,branch_id,employment_status,employee_code,start_date").order("display_name"),
     sb.from("cr360_hr_leave_requests").select("id,employee_id,leave_type,start_date,end_date,status,created_at").eq("status", "pending").order("created_at"),
     sb.from("cr360_hr_ot_requests").select("id,employee_id,work_date,minutes,status,created_at").eq("status", "pending").order("created_at"),
     sb.from("cr360_hr_correction_requests").select("id,employee_id,work_date,correction_type,status,created_at").eq("status", "pending").order("created_at"),
+    sb.from("cr360_hr_shifts").select("id,employee_id,starts_at,ends_at,status").neq("status", "cancelled").gte("ends_at", nowIso).lte("starts_at", until).order("starts_at").limit(500),
   ]);
   const staff = (emps.data ?? []).map(safeDirectoryRow) as { id: string; display_name: string; position: string; employment_status: string; employee_code: string | null }[];
   const name = new Map(staff.map((s) => [s.id, s.display_name]));
+  const planned: PlannedShift[] = ((shiftRes.data ?? []) as { id: string; employee_id: string; starts_at: string; ends_at: string }[]).map((r) => ({
+    id: r.id, who: name.get(r.employee_id) ?? "—",
+    label: `${formatDateTime(r.starts_at, ctx.locale)} → ${formatDateTime(r.ends_at, ctx.locale)}`,
+    startsInFuture: Date.parse(r.starts_at) > now.getTime(),
+  }));
+  const activeStaff = staff.filter((p) => p.employment_status === "active").map((p) => ({ id: p.id, name: p.display_name }));
   const queue = [
     ...(leave.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "leave" as const, kind: t.leave, detail: `${r.leave_type} · ${r.start_date} → ${r.end_date}`, status: r.status })),
     ...(ot.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "ot" as const, kind: t.ot, detail: `${r.work_date} · ${r.minutes} ${t.minutes}`, status: r.status })),
@@ -49,6 +61,10 @@ export default async function ManagerPage() {
               </li>
             ))}</ul>
           )}
+        </section>
+        <section className="cr-card" aria-labelledby="sp-h">
+          <h2 id="sp-h">{t.shiftPlanner}</h2>
+          <ShiftPlanner staff={activeStaff} shifts={planned} t={t} />
         </section>
         <section className="cr-card" aria-labelledby="s-h">
           <h2 id="s-h">{t.branchStaff} ({staff.length})</h2>

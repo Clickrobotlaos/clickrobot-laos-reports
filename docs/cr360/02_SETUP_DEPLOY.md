@@ -10,13 +10,13 @@ npm run dev                       # legacy app at /, ClickRobot 360 at /360
 ## Checks (all must pass before merging)
 ```bash
 npm run typecheck
-npm test                          # 99 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
+npm test                          # 108 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
-npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 30 auth-boundary checks
-npm run test:render               # 37 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
+npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 34 auth-boundary checks
+npm run test:render               # 38 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
 ```
-Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0007 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
+Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0008 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash
 npm run test:db
 ```
@@ -26,7 +26,7 @@ Staging RLS tests (never production): `psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1
 These steps write to production and need CEO approval and execution, in order:
 1. **Apply `supabase/proposed/0001`** (P0 fixes). Take a backup first.
 2. **Bootstrap memberships** for real staff with a reviewed SQL script run by the CEO in the SQL editor (never from the browser). One row per person in `public.cr360_hr_memberships` (`ceo` / `hr` / `manager`+branch / `staff`+branch), and one `public.cr360_hr_employees` row linked by `auth_user_id`. No salary goes in these tables.
-3. **Create shifts** in `public.cr360_hr_shifts` (SQL editor until the shift planner ships).
+3. **Create shifts**: apply `0008`, then managers use the shift planner on `/360/manager` (no SQL needed).
 4. **GPS site:** a branch admin stands at the staff entrance, records lat/lon with ≤10 m accuracy several times, and inserts `public.cr360_hr_sites` with `enabled=false`. Field-test, then set `enabled=true, approved_at=now(), approved_by=<admin uid>`. Until then, check-in is refused with a non-punitive message and staff use correction requests.
 5. Staff sign in with their existing account → `/360/staff`.
 6. **Apply `0004`**. The manager approve/reject buttons in `/360/manager` start working immediately; until then they show "not enabled".
