@@ -6,6 +6,7 @@ import { businessDate } from "@/lib/cr360/i18n";
 import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { loadRollCallData } from "@/lib/cr360/legacy-rollcall";
+import { isActiveSubstitute } from "@/lib/cr360/lesson-access";
 import { jsonError, jsonOk, parseBody, sameOrigin } from "@/lib/cr360/api";
 
 /**
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
     .eq("id", classId).eq("active", true).maybeSingle();
   if (!cls) return jsonError(404, "not_found");
   const scope = studentBranchScope(ctx.viewer);
-  if (!canTakeAttendance(cls as LegacyClass, ctx.viewer.userId, { isCeo: hasRole(ctx.viewer, ["ceo"]), managerOf: scope ?? [] })) {
+  if (!canTakeAttendance(cls as LegacyClass, ctx.viewer.userId, { isCeo: hasRole(ctx.viewer, ["ceo"]), managerOf: scope ?? [] })
+      && !(await isActiveSubstitute(sb, ctx.viewer.userId, classId, today))) {
     return jsonError(404, "not_found"); // same answer as a missing class
   }
   if ((cls as LegacyClass).day_of_week !== dayOfWeek(today)) return jsonError(422, "not_today");

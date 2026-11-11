@@ -72,15 +72,54 @@ select public.cr360_student_note_save(current_setting('t.log')::uuid, '30000000-
   '{"problem_solving":3,"programming":4,"teamwork":3}', 'Private: check pencil grip', 'Great work today!', 'ເຮັດໄດ້ດີຫຼາຍມື້ນີ້.', 'teacher');
 select t.ok((select status from public.cr360_student_lesson_notes where id = current_setting('t.note')::uuid) = 'approved', '0010 private-note-only change keeps the approval');
 
--- substitute (same branch) can READ the log and notes, but not write
+-- same-branch colleague WITHOUT an assignment: nothing (owner rule: need-to-know)
 select t.claims('00000000-0000-0000-0000-0000000000a3');
-select t.ok((select next_plan from public.cr360_lesson_logs where id = current_setting('t.log')::uuid) = 'Add speed control', '0010 substitute teacher can read where the class is');
-select t.ok((select count(*) from public.cr360_student_lesson_notes) = 1, '0010 substitute can read student follow-up notes');
+select t.ok((select count(*) from public.cr360_lesson_logs) = 0, '0010 same-branch teacher without assignment cannot read the class log');
+select t.ok((select count(*) from public.cr360_student_lesson_notes) = 0, '0010 same-branch teacher without assignment cannot read private student notes');
 do $$ declare code text; begin
-  begin perform public.cr360_lesson_log_save('40000000-0000-0000-0000-000000000001', (now() at time zone 'Asia/Vientiane')::date, null, 'Hijack', null, null, null, null); code := 'none';
+  begin perform public.cr360_assign_substitute('40000000-0000-0000-0000-000000000001', auth.uid(), (now() at time zone 'Asia/Vientiane')::date, (now() at time zone 'Asia/Vientiane')::date, 'self'); code := 'none';
   exception when others then code := sqlstate; end;
-  perform t.ok(code = '42501', '0010 substitute cannot overwrite the log');
+  perform t.ok(code = '42501', '0010 a teacher cannot assign themselves as substitute');
 end $$;
+
+-- other-branch manager cannot assign for this class
+select t.claims('00000000-0000-0000-0000-0000000000b1');
+do $$ declare code text; begin
+  begin perform public.cr360_assign_substitute('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a3', (now() at time zone 'Asia/Vientiane')::date, (now() at time zone 'Asia/Vientiane')::date, 'cover'); code := 'none';
+  exception when others then code := sqlstate; end;
+  perform t.ok(code = '42501', '0010 other-branch manager cannot assign a substitute');
+end $$;
+
+-- branch manager assigns a3 for a FUTURE window: not yet active
+select t.claims('00000000-0000-0000-0000-0000000000a1');
+select public.cr360_assign_substitute('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a3',
+  (now() at time zone 'Asia/Vientiane')::date + 3, (now() at time zone 'Asia/Vientiane')::date + 4, 'teacher on leave') as sub_future \gset
+select t.claims('00000000-0000-0000-0000-0000000000a3');
+select t.ok((select count(*) from public.cr360_lesson_logs) = 0, '0010 substitute assignment is not active before its start date');
+-- and for TODAY: active
+select t.claims('00000000-0000-0000-0000-0000000000a1');
+do $$ declare code text; begin
+  begin perform public.cr360_assign_substitute('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a3',
+    (now() at time zone 'Asia/Vientiane')::date - 10, (now() at time zone 'Asia/Vientiane')::date - 1, 'back-dated'); code := 'none';
+  exception when others then code := sqlstate; end;
+  perform t.ok(code = '22023', '0010 an assignment that already ended is refused');
+end $$;
+select public.cr360_assign_substitute('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a3',
+  (now() at time zone 'Asia/Vientiane')::date, (now() at time zone 'Asia/Vientiane')::date, 'teacher sick today') as sub_today \gset
+select set_config('t.sub', :'sub_today', true);
+select t.claims('00000000-0000-0000-0000-0000000000a3');
+select t.ok((select next_plan from public.cr360_lesson_logs where id = current_setting('t.log')::uuid) = 'Add speed control', '0010 assigned substitute can read where the class is');
+select t.ok((select count(*) from public.cr360_student_lesson_notes) = 1, '0010 assigned substitute can read student follow-up notes');
+select t.ok((select count(*) from public.cr360_class_substitutes where substitute_user = auth.uid()) = 2, '0010 substitute sees own assignments');
+-- manager revokes: access ends at once; history kept and audited
+select t.claims('00000000-0000-0000-0000-0000000000a1');
+select t.ok(public.cr360_revoke_substitute(current_setting('t.sub')::uuid, 'teacher back'), '0010 manager revokes the assignment');
+select t.ok(not public.cr360_revoke_substitute(current_setting('t.sub')::uuid, 'again'), '0010 revoke is idempotent');
+select t.claims('00000000-0000-0000-0000-0000000000a3');
+select t.ok((select count(*) from public.cr360_lesson_logs) = 0, '0010 access ends when the assignment is revoked');
+reset role;
+select t.ok((select count(*) from cr360_vault.audit_events where action like 'teaching.substitute.%') = 3, '0010 substitute assign/revoke are audited');
+set local role authenticated;
 
 -- other-branch manager sees nothing and cannot write
 select t.claims('00000000-0000-0000-0000-0000000000b1');

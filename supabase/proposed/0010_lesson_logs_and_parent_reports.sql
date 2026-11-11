@@ -4,8 +4,11 @@
 --
 -- Instructor class log + per-student follow-up + parent reports (owner request 2026-11-11):
 --  * Lesson log per class per day: unit, lesson, level, what was covered, next plan, substitute notes.
---    Written by the class teacher/assistant, the branch manager or CEO; editable for 14 days.
---    READ by any staff member of the same branch so a SUBSTITUTE teacher can continue the class.
+--    Written by the class teacher/assistant, an ASSIGNED substitute (within the assignment dates),
+--    the manager of that branch or the CEO; editable for 14 days.
+--  * Owner rule (2026-11-11): private teaching records are need-to-know. Other teachers of the same
+--    branch get NOTHING automatically; HR by role gets nothing. A manager assigns a substitute for a
+--    date range (audited, revocable); the substitute then sees the class history and handover notes.
 --  * Per-student note per lesson (only students booked in that class): 1–4 rubric on four skills,
 --    private teacher note, parent report in English and Lao. Drafts until the teacher approves;
 --    editing an approved report sends it back to draft.
@@ -16,29 +19,111 @@
 begin;
 
 -- ---- authorisation helpers ---------------------------------------------------------------
+create or replace function cr360_authz.is_branch_manager(p_branch uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select coalesce(cr360_authz.has_role(array['ceo']) or exists (
+    select 1 from public.cr360_hr_memberships m
+    where m.user_id = (select auth.uid()) and m.active and m.role = 'manager' and m.branch_id = p_branch
+  ) and cr360_authz.has_role(array['manager']), false)
+$$;
+
+-- Manager-assigned substitute teachers (history kept; revocation instead of delete).
+create table if not exists public.cr360_class_substitutes (
+  id uuid primary key default gen_random_uuid(),
+  class_id uuid not null references public.classes(id),
+  branch_id uuid not null references public.branches(id),
+  substitute_user uuid not null references auth.users(id),
+  starts_on date not null,
+  ends_on date not null,
+  reason text not null check (length(trim(reason)) between 3 and 300),
+  assigned_by uuid not null,
+  assigned_at timestamptz not null default now(),
+  revoked_by uuid,
+  revoked_at timestamptz,
+  check (ends_on >= starts_on and ends_on - starts_on <= 62)
+);
+create index if not exists cr360_class_substitutes_user on public.cr360_class_substitutes (substitute_user, class_id) where revoked_at is null;
+alter table public.cr360_class_substitutes enable row level security;
+revoke all on public.cr360_class_substitutes from anon, authenticated;
+grant select on public.cr360_class_substitutes to authenticated;
+
+create or replace function cr360_authz.is_class_substitute(p_class uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select (select auth.uid()) is not null and cr360_authz.active_member() and exists (
+    select 1 from public.cr360_class_substitutes s
+    where s.class_id = p_class and s.substitute_user = (select auth.uid()) and s.revoked_at is null
+      and (now() at time zone 'Asia/Vientiane')::date between s.starts_on and s.ends_on
+  )
+$$;
+
 create or replace function cr360_authz.can_teach_class(p_class uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select (select auth.uid()) is not null and exists (
     select 1 from public.classes c
     where c.id = p_class and c.active
       and (c.teacher_id = (select auth.uid()) or c.assistant_id = (select auth.uid())
-           or cr360_authz.can_access_branch(c.branch_id))   -- CEO / HR org-wide, or manager of this branch
+           or cr360_authz.is_branch_manager(c.branch_id)
+           or cr360_authz.is_class_substitute(c.id))
   )
 $$;
 
--- Substitute access: any active ClickRobot 360 member assigned to the class's branch may READ.
+-- Reading = the same people (no same-branch or HR-by-role access).
 create or replace function cr360_authz.can_view_class_progress(p_class uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
-  select cr360_authz.can_teach_class(p_class) or exists (
-    select 1 from public.classes c
-    join public.cr360_hr_memberships m on m.user_id = (select auth.uid()) and m.active and m.branch_id = c.branch_id
-    where c.id = p_class
-  )
+  select cr360_authz.can_teach_class(p_class)
 $$;
+revoke all on function cr360_authz.is_branch_manager(uuid) from public, anon;
+revoke all on function cr360_authz.is_class_substitute(uuid) from public, anon;
 revoke all on function cr360_authz.can_teach_class(uuid) from public, anon;
 revoke all on function cr360_authz.can_view_class_progress(uuid) from public, anon;
+grant execute on function cr360_authz.is_branch_manager(uuid) to authenticated;
+grant execute on function cr360_authz.is_class_substitute(uuid) to authenticated;
 grant execute on function cr360_authz.can_teach_class(uuid) to authenticated;
 grant execute on function cr360_authz.can_view_class_progress(uuid) to authenticated;
+
+drop policy if exists cr360_class_substitutes_read on public.cr360_class_substitutes;
+create policy cr360_class_substitutes_read on public.cr360_class_substitutes for select to authenticated
+  using (substitute_user = (select auth.uid()) or cr360_authz.is_branch_manager(branch_id));
+
+create or replace function public.cr360_assign_substitute(
+  p_class uuid, p_user uuid, p_starts date, p_ends date, p_reason text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare v_branch uuid; v_id uuid; v_today date := (now() at time zone 'Asia/Vientiane')::date;
+begin
+  select c.branch_id into v_branch from public.classes c where c.id = p_class and c.active;
+  if v_branch is null then raise exception 'class not found' using errcode = 'P0002'; end if;
+  if cr360_authz.is_branch_manager(v_branch) is not true then raise exception 'access denied' using errcode = '42501'; end if;
+  if p_reason is null or length(trim(p_reason)) < 3 then raise exception 'reason required' using errcode = '22023'; end if;
+  if p_starts is null or p_ends is null or p_ends < p_starts or p_ends < v_today or p_ends - p_starts > 62 then
+    raise exception 'invalid date range (max 62 days, not in the past)' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.cr360_hr_memberships m where m.user_id = p_user and m.active and m.role in ('staff','manager')) then
+    raise exception 'substitute must be active staff' using errcode = 'P0002';
+  end if;
+  insert into public.cr360_class_substitutes (class_id, branch_id, substitute_user, starts_on, ends_on, reason, assigned_by)
+  values (p_class, v_branch, p_user, p_starts, p_ends, trim(p_reason), auth.uid()) returning id into v_id;
+  insert into cr360_vault.audit_events (actor, action, entity, entity_id, branch_id, after, reason)
+  values (auth.uid(), 'teaching.substitute.assign', 'cr360_class_substitutes', v_id, v_branch,
+          jsonb_build_object('class_id', p_class, 'substitute', p_user, 'starts_on', p_starts, 'ends_on', p_ends), trim(p_reason));
+  return v_id;
+end $$;
+
+create or replace function public.cr360_revoke_substitute(p_id uuid, p_reason text) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare v_branch uuid;
+begin
+  select branch_id into v_branch from public.cr360_class_substitutes where id = p_id and revoked_at is null;
+  if v_branch is null then return false; end if;  -- idempotent
+  if cr360_authz.is_branch_manager(v_branch) is not true then raise exception 'access denied' using errcode = '42501'; end if;
+  update public.cr360_class_substitutes set revoked_at = now(), revoked_by = auth.uid() where id = p_id;
+  insert into cr360_vault.audit_events (actor, action, entity, entity_id, branch_id, reason)
+  values (auth.uid(), 'teaching.substitute.revoke', 'cr360_class_substitutes', p_id, v_branch, nullif(trim(coalesce(p_reason, '')), ''));
+  return true;
+end $$;
+revoke all on function public.cr360_assign_substitute(uuid, uuid, date, date, text) from public, anon;
+revoke all on function public.cr360_revoke_substitute(uuid, text) from public, anon;
+grant execute on function public.cr360_assign_substitute(uuid, uuid, date, date, text) to authenticated;
+grant execute on function public.cr360_revoke_substitute(uuid, text) to authenticated;
 
 -- ---- tables -------------------------------------------------------------------------------
 create table if not exists public.cr360_lesson_logs (

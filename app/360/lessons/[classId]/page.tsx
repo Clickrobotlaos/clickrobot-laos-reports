@@ -8,6 +8,7 @@ import { roster } from "@/lib/cr360/rollcall";
 import { isValidRubric, type Rubric } from "@/lib/cr360/reports";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { LessonWorkspace, type StudentRow } from "@/components/cr360/LessonWorkspace";
+import { SubstitutePanel, type SubstituteRow } from "@/components/cr360/SubstitutePanel";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,8 +19,8 @@ interface NoteRow { id: string; lesson_log_id: string; package_id: string; rubri
 
 /**
  * Lesson log + student follow-up + parent reports for one class and day.
- * Teacher/assistant/manager/CEO: edit. Same-branch staff (e.g. a substitute): read the
- * "where the class is" brief. Everyone else: no access. The DB (0010) enforces the same rules.
+ * Teacher/assistant, assigned substitute (within dates), branch manager, CEO: read + edit.
+ * Everyone else (including other teachers of the branch): no access. The DB (0010) enforces the same.
  */
 export default async function LessonPage({ params, searchParams }: { params: Promise<{ classId: string }>; searchParams: Promise<{ date?: string }> }) {
   const ctx = await loadViewer();
@@ -32,7 +33,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   const date = sp.date && ISO.test(sp.date) && sp.date <= today ? sp.date : today;
 
   const sb = await supabaseServer();
-  const { cls, canWrite, canRead } = await classAccess(sb, ctx.viewer, classId);
+  const { cls, canWrite, canRead, isSubstitute, canAssign } = await classAccess(sb, ctx.viewer, classId);
   if (!cls || !canRead) return <Unauthorized t={t} />;
 
   const [logsRes, rc] = await Promise.all([
@@ -45,6 +46,23 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   const todayLog = logs.find((l) => l.lesson_date === date) ?? null;
   const previous = logs.filter((l) => l.lesson_date < date);
   const latest = todayLog ?? previous[0] ?? null;
+
+  // Substitute assignments (manager / CEO only): current and future, plus branch staff to choose from.
+  let subs: SubstituteRow[] = [];
+  let subStaff: { userId: string; name: string }[] = [];
+  if (canAssign && enabled) {
+    const [subRes, empRes] = await Promise.all([
+      sb.from("cr360_class_substitutes").select("id,substitute_user,starts_on,ends_on,reason")
+        .eq("class_id", cls.id).is("revoked_at", null).gte("ends_on", today).order("starts_on").limit(50),
+      sb.from("cr360_hr_employees").select("auth_user_id,display_name,employment_status")
+        .eq("branch_id", cls.branch_id).not("auth_user_id", "is", null).order("display_name").limit(200),
+    ]);
+    const emps = ((empRes.data ?? []) as { auth_user_id: string; display_name: string; employment_status: string }[]);
+    const nameOf = new Map(emps.map((e) => [e.auth_user_id, e.display_name]));
+    subStaff = emps.filter((e) => e.employment_status === "active" && e.auth_user_id !== cls.teacher_id).map((e) => ({ userId: e.auth_user_id, name: e.display_name }));
+    subs = ((subRes.data ?? []) as { id: string; substitute_user: string; starts_on: string; ends_on: string; reason: string }[])
+      .map((r) => ({ id: r.id, who: nameOf.get(r.substitute_user) ?? "—", startsOn: r.starts_on, endsOn: r.ends_on, reason: r.reason }));
+  }
 
   const notesRes = enabled && logs.length
     ? await sb.from("cr360_student_lesson_notes").select("id,lesson_log_id,package_id,rubric,teacher_note,report_en,report_lo,report_source,status").in("lesson_log_id", logs.map((l) => l.id))
@@ -72,6 +90,8 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       <h1 className="cr-h1" style={{ marginTop: 8 }}>{cls.name}</h1>
       <p className="cr-sub">{t.lessonsTitle}</p>
       {!enabled && <div className="cr-banner info">{t.lessonsNotEnabled}</div>}
+      {isSubstitute && <div className="cr-banner info">{t.subYouAre}</div>}
+      {canAssign && enabled && <SubstitutePanel classId={cls.id} staff={subStaff} current={subs} t={t} />}
 
       <section className="cr-card" aria-labelledby="wc-h" style={{ marginBottom: 14 }}>
         <h2 id="wc-h">{t.whereClassIs}</h2>

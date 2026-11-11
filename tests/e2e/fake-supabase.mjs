@@ -88,6 +88,11 @@ const DB = {
   cr360_student_lesson_notes: [
     { id: "a2000000-0000-4000-8000-000000000001", lesson_log_id: "a1000000-0000-4000-8000-000000000001", package_id: pk(1).id, rubric: { programming: 4 }, teacher_note: "Strong debugging", report_en: "Your child led the debugging.", report_lo: "ລູກຂອງທ່ານເປັນຜູ້ນຳແກ້ບັນຫາ.", report_source: "teacher", status: "approved" },
   ],
+  // Manager-assigned substitute: the "sub" persona covers Spike Prime A today only (0010).
+  cr360_class_substitutes: [
+    { id: "a3000000-0000-4000-8000-000000000001", class_id: "40000000-0000-4000-8000-000000000001", branch_id: A, substitute_user: U.sub,
+      starts_on: today, ends_on: today, reason: "Teacher at training", assigned_by: U.mgr, revoked_at: null },
+  ],
   settings: [],
 };
 
@@ -125,12 +130,13 @@ function applyFilters(rows, params) {
   }
   for (const [k, v] of params) {
     if (["select", "order", "offset", "limit", "or"].includes(k)) continue;
-    const m = /^(eq|neq|gte|lt|lte|gt|in|is)\.(.*)$/.exec(v);
+    const m = /^(not\.)?(eq|neq|gte|lt|lte|gt|in|is)\.(.*)$/.exec(v);
     if (!m) continue;
-    const [, op, raw] = m;
+    const [, neg, op, raw] = m;
     const val = raw === "null" ? null : raw === "true" ? true : raw === "false" ? false : raw;
     out = out.filter((r) => {
       const x = r[k] === undefined ? null : r[k];
+      if (neg) return !(op === "is" ? x === val : String(x) === String(val));
       switch (op) {
         case "eq": return String(x) === String(val);
         case "neq": return String(x) !== String(val);

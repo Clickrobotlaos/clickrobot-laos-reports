@@ -153,3 +153,18 @@ export const DraftReportsInput = z.object({
   }).strict(),
   students: z.array(z.object({ packageId: z.string().uuid(), rubric: RubricInput, teacherNote: optText(2000) }).strict()).min(1).max(40),
 }).strict();
+
+/** Manager assigns / revokes a substitute teacher for one class (0010 cr360_class_substitutes). */
+export const SubstituteInput = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("assign"),
+    classId: z.string().uuid(),
+    userId: z.string().uuid(),
+    startsOn: isoDay,
+    endsOn: isoDay,
+    reason: z.string().trim().min(3).max(300),
+  }).strict(),
+  z.object({ action: z.literal("revoke"), id: z.string().uuid(), reason: z.string().trim().max(300).optional() }).strict(),
+]).superRefine((v, ctx) => {
+  if (v.action === "assign" && v.endsOn < v.startsOn) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "end before start", path: ["endsOn"] });
+});

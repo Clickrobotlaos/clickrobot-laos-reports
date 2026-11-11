@@ -48,8 +48,11 @@ const CASES = [
   ["parent", "/360/students/TST-001", NO_ACCESS],
   ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Draft all with AI"],
   ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Add speed control with PID"],
-  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Read-only: you can see where this class is up to"],
+  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "You are the assigned substitute for this class today."],
   ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Kits are in cabinet B"],
+  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000003", NO_ACCESS],   // same branch, NOT assigned → nothing
+  ["sub", "/360/staff", "Spike Prime A"],                                    // covered class appears in My classes today
+  ["mgr", "/360/lessons/40000000-0000-4000-8000-000000000001", "Substitute teachers"],
   ["mgr", "/360/lessons/40000000-0000-4000-8000-000000000002", NO_ACCESS],
   ["parent", "/360/lessons/40000000-0000-4000-8000-000000000001", NO_ACCESS],
   ["parent", "/360/parent", "Your child led the debugging today."],
@@ -63,7 +66,7 @@ const MUST_NOT = [
   ["staff", "/360/staff", "LAK"],                // no money shown to staff
   ["parent", "/360/parent", "Lead One"],
   ["mgr", "/360/staff", "My classes today"],
-  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Draft all with AI"],   // substitute gets no editing / AI
+  ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Assign substitute"],   // teachers cannot assign substitutes
   ["parent", "/360/parent", "Strong debugging"],                                        // private teacher note never reaches parents            // manager teaches no class today in fixtures → no roll call on StaffOS
 ];
 

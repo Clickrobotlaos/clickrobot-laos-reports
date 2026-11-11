@@ -41,7 +41,16 @@ export default async function StaffOsPage() {
   const { data: myCls } = await sb.from("classes")
     .select("id,name,program_id,branch_id,teacher_id,assistant_id,day_of_week,start_time,end_time,room,capacity,level,active")
     .or(`teacher_id.eq.${uid},assistant_id.eq.${uid}`).eq("active", true).eq("day_of_week", dayOfWeek(today)).order("start_time");
-  const myClasses = (myCls ?? []) as LegacyClass[];
+  // Plus classes this person covers today as a manager-assigned substitute (0010; empty before it).
+  const { data: subRows } = await sb.from("cr360_class_substitutes").select("class_id")
+    .eq("substitute_user", uid).is("revoked_at", null).lte("starts_on", today).gte("ends_on", today).limit(50);
+  const subIds = [...new Set(((subRows ?? []) as { class_id: string }[]).map((r) => r.class_id))].filter((id) => !(myCls ?? []).some((c) => c.id === id));
+  const { data: subCls } = subIds.length
+    ? await sb.from("classes").select("id,name,program_id,branch_id,teacher_id,assistant_id,day_of_week,start_time,end_time,room,capacity,level,active")
+        .in("id", subIds).eq("active", true).eq("day_of_week", dayOfWeek(today))
+    : { data: [] };
+  const myClasses = [...((myCls ?? []) as LegacyClass[]), ...((subCls ?? []) as LegacyClass[])]
+    .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
   const rc = await loadRollCallData(sb, myClasses.map((c) => c.id), today);
 
   const shiftRows = shifts.data ?? [];
