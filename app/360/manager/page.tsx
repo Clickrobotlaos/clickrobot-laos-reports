@@ -6,7 +6,9 @@ import { safeDirectoryRow } from "@/lib/cr360/redact";
 import { Unauthorized, StatusBadge } from "@/components/cr360/Blocks";
 import { DecisionButtons } from "@/components/cr360/DecisionButtons";
 import { ShiftPlanner, type PlannedShift } from "@/components/cr360/ShiftPlanner";
-import { formatDateTime } from "@/lib/cr360/i18n";
+import { businessDate, formatDateTime } from "@/lib/cr360/i18n";
+import { studentBranchScope } from "@/lib/cr360/access";
+import { loadTeachingKpis } from "@/lib/cr360/teaching-kpis-load";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,12 @@ export default async function ManagerPage() {
     label: `${formatDateTime(r.starts_at, ctx.locale)} → ${formatDateTime(r.ends_at, ctx.locale)}`,
     startsInFuture: Date.parse(r.starts_at) > now.getTime(),
   }));
+  // Teaching indicators, month to date (branch scope from DB membership; CEO = all branches).
+  const today = businessDate(now);
+  const monthStart = today.slice(0, 8) + "01";
+  const kpi = await loadTeachingKpis(sb, studentBranchScope(ctx.viewer), monthStart, today);
+  const pctCell = (v: number | null) => (v === null ? "—" : `${v}%`);
+
   const activeStaff = staff.filter((p) => p.employment_status === "active").map((p) => ({ id: p.id, name: p.display_name }));
   const queue = [
     ...(leave.data ?? []).map((r) => ({ id: r.id, who: r.employee_id, k: "leave" as const, kind: t.leave, detail: `${r.leave_type} · ${r.start_date} → ${r.end_date}`, status: r.status })),
@@ -73,6 +81,27 @@ export default async function ManagerPage() {
           <h2 id="sp-h">{t.shiftPlanner}</h2>
           <ShiftPlanner staff={activeStaff} shifts={planned} t={t} />
         </section>
+        <section className="cr-card" aria-labelledby="tk-h">
+          <h2 id="tk-h">{t.teachingKpis} · {monthStart} → {today}</h2>
+          <p className="cr-muted">{t.teachingKpisNote}</p>
+          {!kpi.logsEnabled && <div className="cr-banner info">{t.lessonsNotEnabled}</div>}
+          {kpi.error ? <div className="cr-banner bad">{t.err_server_error}</div> : kpi.rows.length === 0 ? <p className="cr-muted">{t.noTeachingData}</p> : (
+            <div className="cr-tablewrap">
+              <table className="cr-table">
+                <thead><tr><th scope="col">{t.teacher}</th><th scope="col">{t.kpiScheduled}</th><th scope="col">{t.kpiRollCall}</th><th scope="col">{t.kpiLogged}</th><th scope="col">{t.kpiReportsApproved}</th></tr></thead>
+                <tbody>{kpi.rows.map((k) => (
+                  <tr key={k.teacherId}>
+                    <td>{k.name}</td><td>{k.scheduled}</td>
+                    <td>{k.rollCall} <span className="cr-muted">({pctCell(k.rollCallPct)})</span></td>
+                    <td>{k.logged} <span className="cr-muted">({pctCell(k.loggedPct)})</span></td>
+                    <td>{k.approved}/{k.notes} <span className="cr-muted">({pctCell(k.approvedPct)})</span></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         <section className="cr-card" aria-labelledby="s-h">
           <h2 id="s-h">{t.branchStaff} ({staff.length})</h2>
           <div className="cr-tablewrap">

@@ -45,7 +45,7 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 17 | HR employee directory | **Live** | `/360/manager` branch staff, safe columns only |
 | 18 | GPS timekeeping, shifts, leave, OT | **Live (GPS on site approval) + On approval (0004, 0008)** | `/360/staff` check-in/out via deployed RPC with server time; leave/OT/correction requests; manager shift planner (0008) and approvals (0004). GPS refuses until each entrance is verified on site |
 | 19 | Contracts & payroll | **On approval (0002, 0012)** | Need-to-know pay (decision B), own payslips, CEO payroll grants, suspend/reinstate/offboard. Separate service-role pay functions were added to production today outside this repo (decision needed). Missing: payroll runs UI, Lao labour-law rules |
-| 20 | Staff tasks & performance | Not started | |
+| 20 | Staff tasks & performance | **Partial (live; lesson part on 0010)** | `/360/manager` Teaching indicators month to date per teacher: classes scheduled, roll call taken, lesson logged, reports approved (labelled as questions, not scores). Missing: tasks, reviews | |
 | 21 | Branches & HQ/franchise access | **Partial** | Branch scoping in every /360 page; franchise tenancy not modelled |
 | 22 | School partners | Not started | Needs current contract terms |
 | 23 | Franchise & royalties | Not started | Needs signed agreement figures |
