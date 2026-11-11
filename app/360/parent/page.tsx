@@ -6,6 +6,7 @@ import { groupChildren } from "@/lib/cr360/parent";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { ParentRequests, type ParentRequestRow } from "@/components/cr360/ParentRequests";
 import { ConsentChoices, type ConsentPurpose } from "@/components/cr360/ConsentChoices";
+import { MEDIA_BUCKET, SIGNED_URL_SECONDS } from "@/lib/cr360/media-rules";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,13 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   // Achievements (0015): issued only, verified child only; missing function → section hidden.
   const achRes = await sb.rpc("cr360_guardian_achievements", { p_student_code: current.code });
   const achievements = (achRes.error ? null : achRes.data ?? []) as { id: string; kind: string; title_en: string; title_lo: string | null; awarded_on: string; certificate_no: string | null }[] | null;
+
+  // Class photos/videos (0016): only shared, consented, unexpired items of this child; 1-hour signed links.
+  const medRes = await sb.rpc("cr360_guardian_media", { p_student_code: current.code });
+  const medRows = (medRes.error ? [] : medRes.data ?? []) as { id: string; storage_path: string; kind: "photo" | "video"; caption: string | null; lesson_date: string; class_name: string }[];
+  const medSigned = medRows.length ? (await sb.storage.from(MEDIA_BUCKET).createSignedUrls(medRows.map((m) => m.storage_path), SIGNED_URL_SECONDS)).data ?? [] : [];
+  const medUrl = new Map(medSigned.map((x) => [x.path, x.signedUrl]));
+  const gallery = medRows.map((m) => ({ ...m, url: medUrl.get(m.storage_path) ?? null })).filter((m) => m.url);
 
   // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
   const conRes = await sb.rpc("cr360_guardian_my_consents");
@@ -119,6 +127,19 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
             <li key={a.id}>
               <span><b>{ctx.locale === "lo" && a.title_lo ? a.title_lo : a.title_en}</b><br /><span className="cr-muted">{a.awarded_on}{a.certificate_no ? ` · ${a.certificate_no}` : ""}</span></span>
               <Link className="cr-btn ghost" style={{ minHeight: 40 }} href={`/360/parent/certificate/${a.id}?child=${encodeURIComponent(current.code)}`}>{t.viewCertificate}</Link>
+            </li>
+          ))}</ul>
+        </section>
+      )}
+
+      {gallery.length > 0 && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="gal-h">
+          <h2 id="gal-h">📸 {t.parentGallery}</h2>
+          <ul className="cr-media-grid">{gallery.map((m) => (
+            <li key={m.id} className="cr-media-card">
+              {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL; must not pass through the image optimizer/cache */}
+              {m.kind === "video" ? <video src={m.url!} controls preload="metadata" /> : <img src={m.url!} alt={m.caption ?? m.class_name} loading="lazy" />}
+              <div style={{ padding: 8, fontSize: 14 }}>{m.caption && <div>{m.caption}</div>}<div className="cr-muted">{m.lesson_date} · {m.class_name}</div></div>
             </li>
           ))}</ul>
         </section>

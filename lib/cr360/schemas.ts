@@ -191,3 +191,18 @@ export const AchievementInput = z.discriminatedUnion("action", [
   }).strict(),
   z.object({ action: z.enum(["issue", "decline", "revoke"]), id: z.string().uuid(), reason: optText(300) }).strict(),
 ]);
+
+/** Class media (0016): register an uploaded file, or share / unshare / remove it. */
+export const MediaInput = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("register"),
+    path: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.(jpg|mp4)$/i),
+    kind: z.enum(["photo", "video"]),
+    mime: z.enum(["image/jpeg", "video/mp4"]),
+    bytes: z.number().int().positive().max(52428800),
+    durationS: z.number().positive().max(60).optional(),
+    caption: optText(300),
+    tagged: z.array(z.string().uuid()).max(30),
+  }).strict(),
+  z.object({ action: z.enum(["share", "unshare", "remove"]), id: z.string().uuid(), reason: optText(300) }).strict(),
+]);

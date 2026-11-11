@@ -36,7 +36,7 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 8 | Packages, renewals, makeups | **Partial (live)** | Balances, low-balance and overdrawn flags. Missing: renewal/extension/freeze workflows, makeup credits ledger |
 | 9 | Parent portal | **On approval (0005 + 0006, 0009, 0013, 0014)** | Children, sessions left, next-14-day schedule incl. makeups, invoices / payments linked to packages, requests, approved reports, privacy choices. Missing: media, messaging, announcements, NOVA | `/360/parent`: children, course, branch, sessions left, requests to the centre. Missing: invoices, calendar, media |
 | 10 | Learning progression | **On approval (0010, 0013)** | Lesson log, rubric, follow-up, parent reports with teacher approval, assigned substitutes. AI drafts off until verified + consent. Achievements & certificates (0015): teacher proposes, manager issues, numbered printable certificate for parents. Missing: lesson-plan curriculum, teacher KPIs |
-| 11 | Private child media | Not started | Needs private bucket + consent design |
+| 11 | Private child media | **On approval (0016)** | Private bucket; photos shrunk on the phone (1600 px JPEG), short MP4 videos (≤60 s, ≤50 MB); 6 photos + 1 video per class/day; tag children; share only with every tagged child's consent; parent gallery with 1-hour links; 90-day expiry. Check storage allowance before enabling |
 | 12 | Competitions/teams | Not started | |
 | 13 | CRM trial-to-sale | **Live** | `/360/crm` Kanban, funnel, follow-up SLA flags, safe stage moves with race protection. Trial booking/registration in Records app |
 | 14 | Marketing/referrals | Not started | |

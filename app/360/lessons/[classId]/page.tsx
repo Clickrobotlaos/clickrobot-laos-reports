@@ -4,6 +4,8 @@ import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { businessDate, dict } from "@/lib/cr360/i18n";
 import { classAccess } from "@/lib/cr360/lesson-access";
 import { aiStatus } from "@/lib/cr360/ai-reports";
+import { MEDIA_BUCKET, SIGNED_URL_SECONDS } from "@/lib/cr360/media-rules";
+import { ClassMedia, type MediaItem } from "@/components/cr360/ClassMedia";
 import { loadRollCallData } from "@/lib/cr360/legacy-rollcall";
 import { roster } from "@/lib/cr360/rollcall";
 import { isValidRubric, type Rubric } from "@/lib/cr360/reports";
@@ -65,6 +67,14 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       .map((r) => ({ id: r.id, who: nameOf.get(r.substitute_user) ?? "—", startsOn: r.starts_on, endsOn: r.ends_on, reason: r.reason }));
   }
 
+  // Class media for this day (0016). Missing table → panel hidden. URLs are signed per request, 1 hour.
+  const mediaRes = canWrite ? await sb.from("cr360_class_media").select("id,kind,storage_path,caption,status,tagged_packages")
+    .eq("class_id", cls.id).eq("lesson_date", date).neq("status", "removed").order("uploaded_at") : { data: null, error: true };
+  const mediaRows = (mediaRes.error ? [] : mediaRes.data ?? []) as { id: string; kind: "photo" | "video"; storage_path: string; caption: string | null; status: string; tagged_packages: string[] }[];
+  const signed = mediaRows.length ? (await sb.storage.from(MEDIA_BUCKET).createSignedUrls(mediaRows.map((m) => m.storage_path), SIGNED_URL_SECONDS)).data ?? [] : [];
+  const urlOf = new Map(signed.map((x) => [x.path, x.signedUrl]));
+  const media: MediaItem[] = mediaRows.map((m) => ({ id: m.id, kind: m.kind, url: urlOf.get(m.storage_path) ?? null, caption: m.caption, status: m.status, tagged: m.tagged_packages }));
+
   const notesRes = enabled && logs.length
     ? await sb.from("cr360_student_lesson_notes").select("id,lesson_log_id,package_id,rubric,teacher_note,report_en,report_lo,report_source,status").in("lesson_log_id", logs.map((l) => l.id))
     : { data: [] };
@@ -85,6 +95,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
     };
   });
 
+  const showMedia = canWrite && !mediaRes.error;
   return (
     <>
       <Link href="/360" className="cr-muted">← {t.back}</Link>
@@ -126,6 +137,12 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       ) : !canWrite ? (
         <div className="cr-banner info">{t.readOnlySubstitute}</div>
       ) : null}
+      {showMedia && (
+        <div style={{ marginTop: 14 }}>
+          <ClassMedia classId={cls.id} branchId={cls.branch_id} date={date} t={t} items={media}
+            students={entries.map((e) => ({ packageId: e.packageId, name: e.name }))} />
+        </div>
+      )}
     </>
   );
 }
