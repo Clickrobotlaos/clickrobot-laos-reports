@@ -8,7 +8,8 @@
 --
 -- Change: those policies now require an ACTIVE legacy staff record (a public.users row that is
 -- not deactivated / Terminated). Policy names, commands and roles are unchanged (ALTER POLICY).
--- Also: public.my_role() now returns NULL for deactivated / 'Terminated' users. Legacy role-based
+-- Also: public.my_role() now returns NULL for Terminated / Suspended / deactivated users and for
+-- anyone past users.end_date or users.contract_end (decision A). Legacy role-based
 -- policies (incl. FOR ALL write policies such as p_pkg_write, which also grant SELECT) all go through
 -- my_role(), so a former employee's login loses every legacy permission, not just the reads above.
 -- Effect on the existing Records app: none for active staff. BEHAVIOUR CHANGE (intended, owner to
@@ -18,26 +19,37 @@
 -- =====================================================================================
 begin;
 
+-- Owner decision A (2026-11-11): access ends on the effective termination date or contract expiry
+-- (access runs through the last day, Vientiane time), and while suspended. Records are kept.
+-- Legacy app sets active = (status = 'Active'), so 'On leave' rows have active=false: still employed.
+create or replace function cr360_authz.employment_ok(p_uid uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select p_uid is not null and exists (
+    select 1 from public.users u
+    where u.id = p_uid
+      and ((coalesce(u.status, 'Active') = 'Active' and coalesce(u.active, true)) or u.status = 'On leave')
+      and (u.end_date     is null or u.end_date     >= (now() at time zone 'Asia/Vientiane')::date)
+      and (u.contract_end is null or u.contract_end >= (now() at time zone 'Asia/Vientiane')::date)
+  )
+$$;
+revoke all on function cr360_authz.employment_ok(uuid) from public;
+
 create or replace function public.my_role()
 returns text language sql stable security definer set search_path = public, pg_temp as $$
   select role from public.users
-  where id = auth.uid() and coalesce(active, true) and coalesce(status, 'Active') <> 'Terminated'
+  where id = auth.uid() and cr360_authz.employment_ok(auth.uid())
 $$;
 
 create or replace function cr360_authz.is_legacy_staff()
 returns boolean language sql stable security definer set search_path = '' as $$
-  select (select auth.uid()) is not null and exists (
-    select 1 from public.users u
-    where u.id = (select auth.uid())
-      and coalesce(u.active, true)
-      and coalesce(u.status, 'Active') <> 'Terminated'
-  )
+  select cr360_authz.employment_ok((select auth.uid()))
 $$;
 revoke all on function cr360_authz.is_legacy_staff() from public;
 -- anon must be able to EXECUTE (returns false): legacy policies target role "public", so anon
 -- queries evaluate them; without EXECUTE, anon reads would error instead of returning no rows.
 grant usage on schema cr360_authz to anon;
 grant execute on function cr360_authz.is_legacy_staff() to anon, authenticated;
+grant execute on function cr360_authz.employment_ok(uuid) to anon, authenticated;
 
 alter policy p_branches_read on public.branches using ((select cr360_authz.is_legacy_staff()));
 alter policy p_programs_read on public.programs using ((select cr360_authz.is_legacy_staff()));

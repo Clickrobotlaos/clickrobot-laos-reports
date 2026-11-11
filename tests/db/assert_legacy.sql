@@ -113,9 +113,10 @@ rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
-do $$ declare n int; begin
-  update public.users set base_salary = 333 where id = '00000000-0000-0000-0000-0000000000a2'; get diagnostics n = row_count;
-  perform t.ok(n = 1, 'co_admin can still edit another user''s salary (self-edit-lock README)');
+do $$ declare n int := 0; begin
+  begin update public.users set base_salary = 333 where id = '00000000-0000-0000-0000-0000000000a2'; get diagnostics n = row_count;
+  exception when insufficient_privilege then n := 0; end;
+  perform t.sec(n = 0, 'B: co_admin without a CEO payroll grant cannot change a colleague''s salary');
 end $$;
 rollback;
 
@@ -136,12 +137,13 @@ rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c1');
-select t.ok((select count(*) from public.users) = 6, 'co_admin still reads all users (staff page)');
+select t.sec((select count(*) from public.users) = 1, 'B: co_admin without a payroll grant reads only own users row');
 rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000f1');
-select t.ok((select count(*) from public.users) = 6, 'finance still reads all users (payroll page) — OWNER DECISION');
+select t.sec((select count(*) from public.users) = 1, 'B: finance without a payroll grant reads only own users row (no salaries)');
+select t.sec((select count(*) from public.salary_payroll where user_id is distinct from auth.uid()) = 0, 'B: finance without a payroll grant reads no colleague payslips');
 rollback;
 
 -- ---------------------------------------------------------------- P1-4 anon invoice listing

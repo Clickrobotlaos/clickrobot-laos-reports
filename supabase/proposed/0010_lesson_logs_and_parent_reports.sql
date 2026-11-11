@@ -97,7 +97,7 @@ create or replace function public.cr360_lesson_log_save(
 declare v_user uuid := auth.uid(); v_branch uuid; v_id uuid; v_today date := (now() at time zone 'Asia/Vientiane')::date;
 begin
   if v_user is null then raise exception 'authentication required' using errcode = '28000'; end if;
-  if not cr360_authz.can_teach_class(p_class) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_teach_class(p_class) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if p_date is null or p_date > v_today or p_date < v_today - 14 then raise exception 'date outside the editable window' using errcode = '22023'; end if;
   select branch_id into v_branch from public.classes where id = p_class;
   insert into public.cr360_lesson_logs (class_id, branch_id, lesson_date, unit, lesson_title, level, covered, next_plan, substitute_notes, created_by, updated_by)
@@ -127,12 +127,12 @@ begin
   if v_user is null then raise exception 'authentication required' using errcode = '28000'; end if;
   select class_id, lesson_date into v_class, v_date from public.cr360_lesson_logs where id = p_log;
   if v_class is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_teach_class(v_class) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_teach_class(v_class) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if not exists (select 1 from public.class_bookings b where b.class_id = v_class and b.package_id = p_package and b.status = 'Confirmed'
                  and (b.kind = 'regular' or (b.kind = 'makeup' and b.makeup_date = v_date))) then
     raise exception 'student not booked in this class' using errcode = '22023';
   end if;
-  if not cr360_authz.valid_rubric(p_rubric) then raise exception 'invalid rubric' using errcode = '22023'; end if;
+  if cr360_authz.valid_rubric(p_rubric) is not true then raise exception 'invalid rubric' using errcode = '22023'; end if;
   select student_id into v_code from public.student_packages where id = p_package;
 
   select * into v_old from public.cr360_student_lesson_notes where lesson_log_id = p_log and package_id = p_package for update;
@@ -164,7 +164,7 @@ begin
   select l.class_id, n.report_en, n.report_lo, n.status into v_class, v_en, v_lo, v_status
     from public.cr360_student_lesson_notes n join public.cr360_lesson_logs l on l.id = n.lesson_log_id where n.id = p_note for update of n;
   if v_class is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_teach_class(v_class) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_teach_class(v_class) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if coalesce(trim(v_en), '') = '' and coalesce(trim(v_lo), '') = '' then raise exception 'report is empty' using errcode = '22023'; end if;
   if v_status = 'approved' then return; end if; -- idempotent
   update public.cr360_student_lesson_notes set status = 'approved', approved_by = v_user, approved_at = now() where id = p_note;

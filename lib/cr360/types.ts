@@ -29,6 +29,8 @@ export interface Viewer {
   guardianOf?: string[];
   /** Explicit partner/investor finance grants (entity + validity window). */
   partnerGrants?: PartnerGrant[];
+  /** Explicit CEO-granted payroll-processing access (cr360_authz.payroll_grants). Never inferred from a role. */
+  payrollAccess?: boolean;
 }
 
 export interface Grant {

@@ -73,7 +73,7 @@ declare v_user uuid := auth.uid(); v_id uuid;
 begin
   if v_user is null then raise exception 'authentication required' using errcode = '28000'; end if;
   if p_guardian = v_user then raise exception 'cannot link yourself' using errcode = '42501'; end if;
-  if not cr360_authz.can_manage_student(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_manage_student(p_student_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   insert into public.cr360_guardian_links (guardian_user_id, student_code, relationship, created_by)
   values (p_guardian, p_student_code, coalesce(p_relationship, 'guardian'), v_user) returning id into v_id;
   insert into cr360_vault.audit_events (actor, action, entity, entity_id, after)
@@ -90,7 +90,7 @@ begin
   select student_code, guardian_user_id, verified_at, revoked_at into v_code, v_guardian, v_verified, v_revoked
     from public.cr360_guardian_links where id = p_link for update;
   if v_code is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_manage_student(v_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_manage_student(v_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if v_revoked is not null or v_verified is not null then raise exception 'link not pending' using errcode = '40001'; end if;
   update public.cr360_guardian_links
      set verified_by = v_user, verified_at = now(), consent_at = now(), consent_version = p_consent_version
@@ -150,7 +150,7 @@ returns uuid language plpgsql volatile security definer set search_path = '' as 
 declare v_guardian uuid;
 begin
   if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
-  if not cr360_authz.can_manage_student(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_manage_student(p_student_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if p_email is null or position('@' in p_email) < 2 then raise exception 'invalid email' using errcode = '22023'; end if;
   select id into v_guardian from auth.users where lower(email) = lower(trim(p_email)) limit 1;
   if v_guardian is null then raise exception 'no account for this email' using errcode = 'P0002'; end if;
@@ -164,7 +164,7 @@ returns table (id uuid, guardian_email text, relationship text, created_at times
                verified_at timestamptz, consent_version text, revoked_at timestamptz, revoke_reason text)
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if not cr360_authz.can_manage_student(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_manage_student(p_student_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   return query
     select l.id, u.email::text, l.relationship, l.created_at, l.verified_at, l.consent_version, l.revoked_at, l.revoke_reason
     from public.cr360_guardian_links l left join auth.users u on u.id = l.guardian_user_id

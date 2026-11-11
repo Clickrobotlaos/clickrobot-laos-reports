@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canTakeAttendance, planMark, roster, type RosterPackage, type TodayAttendance } from "@/lib/cr360/rollcall";
+import { canTakeAttendance, planMark, roster, rowForClass, type RosterPackage, type TodayAttendance } from "@/lib/cr360/rollcall";
 import type { LegacyBooking, LegacyClass } from "@/lib/cr360/timetable";
 import { MarkAttendanceInput } from "@/lib/cr360/schemas";
 
@@ -30,9 +30,16 @@ describe("roster", () => {
     expect(r.map((e) => e.name)).toEqual(["Ann", "Bee", "Cat"]);
     expect(r.find((e) => e.name === "Cat")?.kind).toBe("makeup");
   });
-  it("shows today's status and flags marks made in another class", () => {
+  it("shows today's status for THIS class; another class's mark is informational only (decision C)", () => {
     expect(r.find((e) => e.name === "Bee")?.status).toBe("Present");
     expect(r.find((e) => e.name === "Ann")).toMatchObject({ status: null, markedElsewhere: true, remaining: 0 });
+  });
+  it("two classes on one day: each class sees its own row", () => {
+    const two: TodayAttendance[] = [{ id: "x1", package_id: "p1", class_id: "c9", status: "Absent", date }, { id: "x2", package_id: "p1", class_id: "c1", status: "Present", date }];
+    expect(rowForClass(two, "p1", "c1", date)?.id).toBe("x2");
+    expect(rowForClass(two, "p1", "c9", date)?.id).toBe("x1");
+    expect(rowForClass(two, "p1", "c5", date)).toBeUndefined();
+    expect(roster(cls, bookings, pkgs, two, date).find((e) => e.name === "Bee")).toMatchObject({ status: "Present", markedElsewhere: true });
   });
   it("a row recorded without a class (Records app Quick Scan) is shown and labelled, not duplicated", () => {
     const r2 = roster(cls, [bk({ package_id: "p3" })], pkgs, [{ id: "q", package_id: "p3", class_id: null, status: "Present", date }], date);
@@ -56,9 +63,11 @@ describe("mark plan (no double debit, no overdraw)", () => {
     // already Present (session already debited) → re-marking Present is a no-op, not a second debit
     expect(planMark(empty, { id: "a1", package_id: "p1", class_id: "c1", status: "Present", date }, "Present", "c1")).toEqual({ op: "noop" });
   });
-  it("refuses students not booked in this class, or already marked in another class today", () => {
+  it("refuses students not booked in this class", () => {
     expect(planMark(undefined, undefined, "Present", "c1")).toEqual({ op: "reject", code: "not_booked" });
-    expect(planMark(entry, { id: "a2", package_id: "p1", class_id: "c9", status: "Present", date }, "Absent", "c1")).toEqual({ op: "reject", code: "marked_elsewhere" });
+  });
+  it("a mark in another class does not block this class; it inserts a separate row (decision C)", () => {
+    expect(planMark(entry, { id: "a2", package_id: "p1", class_id: "c9", status: "Present", date }, "Present", "c1")).toEqual({ op: "insert" });
   });
 });
 

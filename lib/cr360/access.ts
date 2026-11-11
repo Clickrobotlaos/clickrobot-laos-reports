@@ -37,22 +37,22 @@ export function canReadEmployeeRecord(
 }
 
 /**
- * Payroll money fields (salary, bonus, deductions, bank).
- * Owner decision: ordinary staff do NOT see money fields — not even their own.
- * Managers: own-branch only. CEO/HR: org-wide. Finance & partners: never by role name alone.
+ * Payroll money fields (salary, payslips, bonus, deductions, bank). Owner decision B (2026-11-11),
+ * mirrored in the database by 0002 (cr360_authz.can_read_confidential_hr + salary_payroll policies):
+ *  - CEO: everything except nothing (executive pay included).
+ *  - Explicit payroll grant (CEO-granted, revocable): staff pay for processing; never executive pay.
+ *  - Everyone (staff, teacher, manager, HR, finance): their OWN pay records only.
+ *  - Branch managers, HR and finance get NOTHING else by role name alone; partners nothing here.
  */
 export function canReadPayroll(
   v: Viewer | null | undefined,
-  target: { branchId: string; isExecutive?: boolean },
+  target: { branchId: string; employeeId?: string | null; isExecutive?: boolean },
 ): boolean {
-  if (!v) return false;
-  if (target.isExecutive) return hasRole(v, ["ceo"]); // CEO comp is confidential finance
-  return active(v).some(
-    (g) =>
-      (g.role === "ceo" && g.branchId === null) ||
-      (g.role === "hr" && g.branchId === null) ||
-      (g.role === "manager" && g.branchId === target.branchId),
-  );
+  if (!v || active(v).length === 0) return false;
+  if (hasRole(v, ["ceo"])) return true;
+  if (target.isExecutive) return false; // CEO / executive compensation is confidential finance
+  if (v.payrollAccess === true) return true;
+  return !!target.employeeId && !!v.employeeId && target.employeeId === v.employeeId;
 }
 
 /** Executive / partner finance: CEO, or a partner with an explicit, in-window grant for that entity+scope. */

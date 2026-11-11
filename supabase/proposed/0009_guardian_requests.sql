@@ -55,7 +55,7 @@ create or replace function public.cr360_guardian_request_create(
 declare v_user uuid := auth.uid(); v_id uuid; v_today date := (now() at time zone 'Asia/Vientiane')::date;
 begin
   if v_user is null then raise exception 'authentication required' using errcode = '28000'; end if;
-  if not cr360_authz.is_verified_guardian_of(p_student_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.is_verified_guardian_of(p_student_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if p_start is not null and p_start < v_today - 7 then raise exception 'start date too far in the past' using errcode = '22023'; end if;
   if p_end is not null and p_end > v_today + 365 then raise exception 'end date too far ahead' using errcode = '22023'; end if;
   if (select count(*) from public.cr360_guardian_requests where guardian_user_id = v_user and status = 'pending') >= 10 then
@@ -105,7 +105,7 @@ begin
   if p_action = 'reject' and (p_note is null or length(trim(p_note)) < 3) then raise exception 'reason required' using errcode = '22023'; end if;
   select student_code, status into v_code, v_status from public.cr360_guardian_requests where id = p_id for update;
   if v_code is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_manage_student(v_code) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_manage_student(v_code) is not true then raise exception 'access denied' using errcode = '42501'; end if;
   if v_status <> 'pending' then raise exception 'already decided' using errcode = '40001'; end if;
   v_new := case p_action when 'approve' then 'approved' else 'rejected' end;
   update public.cr360_guardian_requests

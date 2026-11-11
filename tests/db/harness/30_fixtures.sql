@@ -57,3 +57,12 @@ insert into public.cr360_hr_leave_requests (id, employee_id, branch_id, leave_ty
   ('60000000-0000-0000-0000-0000000000a2', '20000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a', 'annual', '2026-12-01', '2026-12-02', 'test'),
   ('60000000-0000-0000-0000-0000000000a1', '20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a', 'annual', '2026-12-03', '2026-12-03', 'mgr own'),
   ('60000000-0000-0000-0000-0000000000b9', '20000000-0000-0000-0000-0000000000b9', '10000000-0000-0000-0000-00000000000b', 'sick', '2026-12-01', '2026-12-01', 'test');
+
+-- Legacy payslips (fictional amounts) for decision-B checks: one each for staff A and staff A2.
+insert into public.salary_payroll (id, month, staff_id, user_id, staff_name, net, currency, rate_to_lak, net_lak) values
+  ('80000000-0000-0000-0000-0000000000a2', '2026-10', '00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-0000000000a2', 'TEST Staff A', 111, 'LAK', 1, 111),
+  ('80000000-0000-0000-0000-0000000000a3', '2026-10', '00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-0000000000a3', 'TEST Staff A2', 222, 'LAK', 1, 222);
+
+-- Second branch-A class (decision C: two legitimate classes on one day).
+insert into public.classes (id, name, branch_id, capacity) values
+  ('40000000-0000-0000-0000-000000000002', 'TEST Class 2', '10000000-0000-0000-0000-00000000000a', 8);

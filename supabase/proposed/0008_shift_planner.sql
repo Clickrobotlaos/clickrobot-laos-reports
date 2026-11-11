@@ -28,7 +28,7 @@ begin
 
   select branch_id, employment_status into v_branch, v_status from public.cr360_hr_employees where id = p_employee;
   if v_branch is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_access_branch(v_branch) or not cr360_authz.has_role(array['ceo','hr','manager']) then
+  if (cr360_authz.can_access_branch(v_branch) and cr360_authz.has_role(array['ceo','hr','manager'])) is not true then
     raise exception 'access denied' using errcode = '42501';
   end if;
   if v_status <> 'active' then raise exception 'employee not active' using errcode = '22023'; end if;
@@ -57,7 +57,7 @@ begin
   if p_reason is null or length(trim(p_reason)) < 3 then raise exception 'reason required' using errcode = '22023'; end if;
   select branch_id, status, starts_at into v_branch, v_status, v_starts from public.cr360_hr_shifts where id = p_shift for update;
   if v_branch is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_access_branch(v_branch) or not cr360_authz.has_role(array['ceo','hr','manager']) then
+  if (cr360_authz.can_access_branch(v_branch) and cr360_authz.has_role(array['ceo','hr','manager'])) is not true then
     raise exception 'access denied' using errcode = '42501';
   end if;
   if v_status = 'cancelled' then return; end if; -- idempotent

@@ -54,7 +54,7 @@ begin
   execute format('select employee_id, branch_id, status from public.%I where id = $1 for update', v_tbl)
     into v_emp, v_branch, v_status using p_id;
   if v_emp is null then raise exception 'not found' using errcode = 'P0002'; end if;
-  if not cr360_authz.can_access_branch(v_branch) then raise exception 'access denied' using errcode = '42501'; end if;
+  if cr360_authz.can_access_branch(v_branch) is not true then raise exception 'access denied' using errcode = '42501'; end if;
 
   select auth_user_id into v_owner from public.cr360_hr_employees where id = v_emp;
   if v_owner = v_user then raise exception 'cannot decide own request' using errcode = '42501'; end if;

@@ -1,5 +1,5 @@
 import { MarkAttendanceInput } from "@/lib/cr360/schemas";
-import { canTakeAttendance, planMark, roster } from "@/lib/cr360/rollcall";
+import { canTakeAttendance, planMark, roster, rowForClass } from "@/lib/cr360/rollcall";
 import { dayOfWeek, type LegacyClass } from "@/lib/cr360/timetable";
 import { hasRole, studentBranchScope } from "@/lib/cr360/access";
 import { businessDate } from "@/lib/cr360/i18n";
@@ -11,7 +11,8 @@ import { jsonError, jsonOk, parseBody, sameOrigin } from "@/lib/cr360/api";
 /**
  * POST /api/cr360/attendance/mark — teacher roll call on the LEGACY attendance table, for TODAY only
  * (Vientiane business date, decided by the server). Works on today's database; no migration needed.
- * Double debit is impossible: legacy UNIQUE(package_id, date) + idempotent no-op + conditional update.
+ * One debit per attended class, never two: unique (package, class, day) in 0011 (or the legacy
+ * UNIQUE(package_id, date) before it) + idempotent no-op + conditional update.
  */
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return jsonError(403, "bad_origin");
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   const data = await loadRollCallData(sb, [classId], today);
   if (data.error) return jsonError(500, "server_error");
   const entry = roster(cls as LegacyClass, data.bookings, data.packages, data.attendance, today).find((e) => e.packageId === packageId);
-  const existing = data.attendance.find((a) => a.package_id === packageId && a.date === today);
+  const existing = rowForClass(data.attendance, packageId, classId, today);
   const plan = planMark(entry, existing, status, classId);
   if (plan.op === "reject") return jsonError(plan.code === "not_booked" ? 404 : 409, plan.code);
   if (plan.op === "noop") return jsonOk({ status, changed: false });
@@ -46,7 +47,11 @@ export async function POST(req: Request) {
       package_id: packageId, class_id: classId, date: today, status, recorded_by: ctx.viewer.userId, is_makeup: entry?.kind === "makeup",
     });
     if (error) {
-      if (error.code === "23505") return jsonError(409, "already_decided"); // someone marked at the same moment
+      if (error.code === "23505") {
+        // Before 0011 the legacy one-row-per-day rule refuses a second class; otherwise it was a race.
+        const other = data.attendance.some((a) => a.package_id === packageId && a.date === today && a.class_id !== classId);
+        return jsonError(409, other ? "marked_elsewhere" : "already_decided");
+      }
       return jsonError(error.code === "42501" ? 403 : 500, error.code === "42501" ? "forbidden" : "server_error");
     }
   } else {

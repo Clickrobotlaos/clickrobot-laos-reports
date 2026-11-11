@@ -29,11 +29,10 @@ export function RollCall({ classId, entries, t }: { classId: string; entries: Ro
           <span>
             <b>{e.name}</b>{e.kind === "makeup" && <span className="cr-badge" style={{ marginLeft: 6 }}>{t.makeup}</span>}
             <br /><span className="cr-muted">{t.sessionsLeft}: {e.remaining}</span>
-            {e.markedElsewhere && <><br /><span className="cr-badge pending">{t.markedElsewhereNote}</span></>}
+            {e.markedElsewhere && <><br /><span className="cr-badge">{t.markedElsewhereNote}</span></>}
             {e.recordedWithoutClass && <><br /><span className="cr-badge">{t.recordedInRecords}</span></>}
           </span>
-          {!e.markedElsewhere && (
-            <span className="cr-seg" role="group" aria-label={`${t.rollCall}: ${e.name}`}>
+          <span className="cr-seg" role="group" aria-label={`${t.rollCall}: ${e.name}`}>
               {(["Present", "Absent"] as const).map((s) => (
                 <button key={s} type="button" aria-pressed={e.status === s}
                   disabled={busy === e.packageId || (s === "Present" && e.status !== "Present" && e.remaining <= 0)}
@@ -43,8 +42,7 @@ export function RollCall({ classId, entries, t }: { classId: string; entries: Ro
                   {s === "Present" ? t.present : t.absent}
                 </button>
               ))}
-            </span>
-          )}
+          </span>
         </li>
       ))}</ul>
       <div aria-live="polite">{msg && <div className="cr-banner warn">{msg}</div>}</div>

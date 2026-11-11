@@ -24,9 +24,10 @@ describe("manager branch restriction", () => {
     expect(canAccessBranch(managerA, A)).toBe(true);
     expect(canAccessBranch(managerA, B)).toBe(false);
   });
-  it("manager A cannot read branch B payroll or employee records", () => {
-    expect(canReadPayroll(managerA, { branchId: A })).toBe(true);
+  it("manager reads no colleague payroll by role (decision B), nor branch B employee records", () => {
+    expect(canReadPayroll(managerA, { branchId: A, employeeId: "e-sA" })).toBe(false);
     expect(canReadPayroll(managerA, { branchId: B })).toBe(false);
+    expect(canReadPayroll({ ...managerA, payrollAccess: true }, { branchId: A, employeeId: "e-sA" })).toBe(true);
     expect(canReadEmployeeRecord(managerA, { employeeId: "e-other", branchId: B })).toBe(false);
   });
   it("manager never sees executive (CEO) compensation, even own branch", () => {
@@ -52,8 +53,15 @@ describe("self-only staff access", () => {
 });
 
 describe("payroll privacy", () => {
-  it("staff cannot read payroll — not even their own (owner decision)", () => {
+  it("staff read their own payslips only (decision B)", () => {
+    expect(canReadPayroll(staffA, { branchId: A, employeeId: "e-sA" })).toBe(true);
+    expect(canReadPayroll(staffA, { branchId: A, employeeId: "e-mA" })).toBe(false);
     expect(canReadPayroll(staffA, { branchId: A })).toBe(false);
+  });
+  it("an explicit payroll grant never reaches executive pay; CEO reads all", () => {
+    expect(canReadPayroll({ ...financeA, payrollAccess: true }, { branchId: A, isExecutive: true })).toBe(false);
+    expect(canReadPayroll(ceo, { branchId: A, isExecutive: true })).toBe(true);
+    expect(canReadPayroll({ userId: "x", grants: [], payrollAccess: true }, { branchId: A })).toBe(false);
   });
   it("teacher and branch finance cannot read payroll by role name", () => {
     expect(canReadPayroll(teacherA, { branchId: A })).toBe(false);
