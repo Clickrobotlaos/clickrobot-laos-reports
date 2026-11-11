@@ -60,6 +60,7 @@ Record these again immediately before applying. Every migration must leave these
 | **0012** | Decision A: memberships follow employment; CEO-only audited suspend / reinstate / offboard; `Suspended` status | Widens `users_status_check`; redefines 3 v0.4 helper functions; 5 functions | **0** | Refuses while anyone is Suspended | 0002, 0004, 0006 |
 | 0014 | Parent portal: next-14-day schedule (incl. makeups) and invoices/payments linked to the child's packages; read-only functions for verified parents | 2 functions | **0** | Drops functions | 0005 |
 | 0015 | Achievements & certificates: teacher proposes, branch manager/CEO issues (numbered), declines or revokes with reason; parents see issued ones and print certificates; audited | 1 table + counter; 6 functions | **0** | Drops functions; keeps records | 0005, 0010, 0012 |
+| 0016 | Private class photos/short videos: private Storage bucket, upload by class staff only, shared only if every tagged child has media consent (re-checked on each read), 6 photos + 1 video (≤60 s, ≤50 MB) per class/day, hidden after 90 days, audited | Bucket row + 1 table + storage policies | **0** | Drops policies/functions; keeps files and table | 0010, 0013 |
 | **0013** | Decision D: consent per purpose (portal media, AI reports, notifications, separate public marketing), private by default, reviewable/withdrawable; any guardian's withdrawal wins | 1 append-only table; 5 functions | **0** | Drops functions; keeps consent history | 0005 |
 
 **No migration deletes, overwrites or reformats existing data.** The only statements that touch existing
@@ -151,6 +152,7 @@ command centre. No duplicate tables were created for those purposes in 0001–00
 - [ ] **0007**: one-time payment recording (before real payments are recorded in the app)
 - [ ] **0008**, **0009**, **0010**: shifts, parent requests, lesson logs + substitutes
 - [ ] **0014**, **0015**: parent schedule/invoices; achievements and certificates
+- [ ] **0016**: class photos/videos. Check the plan's storage allowance first (estimate in the media section of the status report)
 
 **After each group**
 - [ ] Re-run §1 counts: unchanged
