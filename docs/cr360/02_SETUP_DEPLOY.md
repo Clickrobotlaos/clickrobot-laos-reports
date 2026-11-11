@@ -16,7 +16,7 @@ npm run build
 npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 36 auth-boundary checks
 npm run test:render               # 41 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
 ```
-Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0008 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
+Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0010 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash
 npm run test:db
 ```
@@ -33,6 +33,7 @@ These steps write to production and need CEO approval and execution, in order:
 
 ## Deploy (Vercel) — only with owner consent
 - Env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Do not** add a service-role key.
+- Optional, server-only: `ANTHROPIC_API_KEY` (AI parent-report drafts) and `CR360_GUARDIAN_CONSENT_VERSION` (enables parent verification).
 - Supabase Auth → URL configuration: add the Vercel domain to redirect URLs.
 - Supabase Auth: enable leaked-password protection; enable MFA (TOTP) for CEO/HR/finance before payroll ships.
 - Use preview deployments for review; promote to production only after the gates in `00_AUDIT_AND_BLOCKERS.md §5`.

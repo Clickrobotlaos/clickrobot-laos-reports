@@ -40,9 +40,9 @@ jobs:
           npx next start -p 3000 > next.log 2>&1 &
           for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:3000/login && break; sleep 1; done
           BASE_URL=http://localhost:3000 npm run test:smoke
-      - name: No service-role key in client bundle
+      - name: No secrets in client bundle
         run: |
-          if grep -rlE "service_role|SERVICE_ROLE" .next/static; then echo "::error::service-role reference in client bundle"; exit 1; fi
+          if grep -rlE "service_role|SERVICE_ROLE|ANTHROPIC_API_KEY|sk-ant" .next/static; then echo "::error::secret reference in client bundle"; exit 1; fi
 
   db:
     runs-on: ubuntu-24.04

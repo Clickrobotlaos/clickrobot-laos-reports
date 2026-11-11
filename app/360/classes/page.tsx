@@ -54,6 +54,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
           {c.teacher_id ? ` · ${t.teacher}: ${staff.get(c.teacher_id) ?? "—"}` : ""}
         </p>
         <ClassroomFill capacity={o.capacity} used={o.used} label={label} />
+        <p style={{ margin: "0 0 6px" }}><Link href={`/360/lessons/${c.id}?date=${date}`}>{t.lessonsLink} →</Link></p>
         <p style={{ margin: 0 }}><b>{o.used}</b>{o.capacity ? ` / ${o.capacity}` : ""} {t.seatsUsed}{o.makeup ? ` · ${o.makeup} ${t.makeupsToday}` : ""}{!o.capacity ? ` · ${t.unlimited}` : ""}</p>
         {rc && (
           <details style={{ marginTop: 10 }}>

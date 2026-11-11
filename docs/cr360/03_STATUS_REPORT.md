@@ -19,6 +19,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 0004 | Audited approve/reject for leave/OT/corrections | No approval path exists | Same |
 | 0006 | Legacy data readable only by active staff; terminated staff lose access | First parent account would read everything; ex-staff keep read+write | Same |
 | 0005 | Verified parent ↔ student links | Parent portal | 29 isolation checks |
+| 0010 | Lesson log, student follow-up and AI-assisted parent reports | Teachers spend a long time writing parent reports; substitutes can't see where a class is | 26 checks |
 | 0009 | Parent requests (absence, makeup, extension, schedule) + manager review | Parents have no way to send requests; changes go through chat | 27 checks |
 | 0008 | Shift planner (create/cancel shifts with overlap, no back-dating, audit) | Shifts can only be added in the SQL editor today, so StaffOS schedules and attendance % stay empty | 19 checks |
 | 0007 | Atomic, idempotent "mark invoice paid" + one income row per invoice | A double click records the payment twice; a failed step leaves income on an unpaid invoice | Duplicate reproduced, then closed; 23 payment checks |
@@ -37,7 +38,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 7 | Attendance & session deductions | **Live** | Teacher roll call ("My classes today" in StaffOS; also on `/360/classes` for managers): today only, assigned classes only, booked students only, no Present without sessions left, idempotent, race-safe. Ledger rebuilt from attendance with counter reconciliation (0/182 mismatches). Double debit blocked by the legacy one-row-per-day constraint (verified) |
 | 8 | Packages, renewals, makeups | **Partial (live)** | Balances, low-balance and overdrawn flags. Missing: renewal/extension/freeze workflows, makeup credits ledger |
 | 9 | Parent portal | **On approval (0005 + 0006, 0009)** | `/360/parent`: children, course, branch, sessions left, requests to the centre. Missing: invoices, calendar, media |
-| 10 | Learning progression | Not started | |
+| 10 | Learning progression | **On approval (0010)** | Per-lesson log (unit, lesson, level, covered, next plan, substitute notes); per-student 4-skill rubric and private follow-up note; "where the class is" brief for substitutes; parent reports (AI or template draft → teacher approval) in the parent portal. Missing: certificates, badges |
 | 11 | Private child media | Not started | Needs private bucket + consent design |
 | 12 | Competitions/teams | Not started | |
 | 13 | CRM trial-to-sale | **Live** | `/360/crm` Kanban, funnel, follow-up SLA flags, safe stage moves with race protection. Trial booking/registration in Records app |
@@ -68,7 +69,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 ## Test evidence
 | Suite | Count | Command |
 |---|---|---|
-| Unit (domain rules, access, contracts) | 120 | `npm test` |
+| Unit (domain rules, access, contracts) | 132 | `npm test` |
 | Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 177 | `npm run test:db` |
 | Auth-boundary smoke against a production build | 36 | `npm run test:smoke` |
 | Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 41 | `npm run test:render` |
@@ -81,8 +82,16 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 - Lao translations need a native speaker's review.
 - GPS has never been tested on a real device at a branch.
 
+## Instructor parent reports (owner request 2026-11-11)
+- `/360/lessons/[class]`: from StaffOS "My classes today" or the classes page.
+- **Where the class is**: the last lesson, level, what was covered, the next plan and substitute notes. Any staff member of the same branch can read it, so a substitute teacher can continue the class.
+- **Per student**: rating 1–4 in four skills, a private note, and an English and Lao parent report. **Draft all with AI** (Claude, `claude-opus-5-5`, low effort) or **Use template** (no AI) fills the reports. The teacher edits, then **Approve for parents** makes a report visible in the parent portal. Editing an approved report sends it back to draft. **Copy text** is for pasting into WhatsApp yourself; nothing is marked as sent.
+- **Privacy**: children's names are removed on the server before any AI call, and the call is blocked if one is still present. Parents never see the private note.
+- **Settings**: needs migration 0010, plus `ANTHROPIC_API_KEY` in the server environment for AI drafts; the template works without it. AI drafting is limited to 20 requests per teacher per 10 minutes. The server-side refusal fallback (`fallbacks: "default"`) is enabled.
+- **Tested**: 26 database checks, unit tests for name removal (Lao and Latin script, classmates, whole-word matching), and the AI request and response handling through the real SDK with the network mocked. In the browser: the teacher, substitute and parent views, and an interactive "Use template" check. **Not tested**: a live AI call, because there's no API key in this environment.
+
 ## Owner decisions needed
-1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005, 0007 (before real payments are recorded) 0008 (to start scheduling staff) and 0009 (parent requests, after 0005).
+1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005, 0007 (before real payments are recorded) 0008 (to start scheduling staff) and 0009 (parent requests, after 0005) and 0010 (lesson logs and parent reports, after 0005).
 2. Former staff: inactive/Terminated users lose all legacy access in 0006 — confirm.
 3. Should the finance role keep full access to staff salary records (0002 keeps it)?
 4. Is one class per package per day intended (blocks same-day makeup)?

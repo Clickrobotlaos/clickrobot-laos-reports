@@ -115,3 +115,41 @@ export const GuardianRequestInput = z.object({
   .refine((v) => !v.startDate || !v.endDate || v.endDate >= v.startDate, { message: "end before start", path: ["endDate"] });
 
 export const GuardianRequestCancelInput = z.object({ id: z.string().uuid() }).strict();
+
+// ---- Lesson logs & parent reports (migration 0010) ----
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const optText = (max: number) => z.string().trim().max(max).optional();
+const RubricInput = z.record(z.enum(["problem_solving", "programming", "mechanics", "teamwork"]), z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]));
+
+export const LessonLogInput = z.object({
+  classId: z.string().uuid(),
+  date: isoDay,
+  unit: optText(200),
+  lessonTitle: z.string().trim().min(2).max(200),
+  level: optText(100),
+  covered: optText(4000),
+  nextPlan: optText(4000),
+  substituteNotes: optText(4000),
+}).strict();
+
+export const StudentNoteInput = z.object({
+  logId: z.string().uuid(),
+  packageId: z.string().uuid(),
+  rubric: RubricInput,
+  teacherNote: optText(2000),
+  reportEn: optText(3000),
+  reportLo: optText(3000),
+  source: z.enum(["teacher", "ai_draft", "ai_draft_edited", "template"]),
+}).strict();
+
+export const NoteApproveInput = z.object({ noteId: z.string().uuid() }).strict();
+
+export const DraftReportsInput = z.object({
+  classId: z.string().uuid(),
+  date: isoDay,
+  mode: z.enum(["ai", "template"]),
+  lesson: z.object({
+    unit: optText(200), lessonTitle: z.string().trim().min(2).max(200), level: optText(100), covered: optText(4000), nextPlan: optText(4000),
+  }).strict(),
+  students: z.array(z.object({ packageId: z.string().uuid(), rubric: RubricInput, teacherNote: optText(2000) }).strict()).min(1).max(40),
+}).strict();

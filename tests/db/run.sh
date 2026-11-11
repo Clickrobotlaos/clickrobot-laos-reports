@@ -5,9 +5,9 @@
 #      + the already-deployed v0.4 foundation + FICTIONAL fixtures
 #   2. runs the staging RLS suite (supabase/tests/rls_negative_tests.sql)
 #   3. BASELINE: asserts each audited vulnerability is reproducible on the production schema
-#   4. applies 0001..0009 (twice, to prove idempotency) and asserts every vulnerability is closed
+#   4. applies 0001..0010 (twice, to prove idempotency) and asserts every vulnerability is closed
 #      and every legacy workflow still works
-#   5. applies the rollbacks 0009..0001, then re-applies forward and re-asserts
+#   5. applies the rollbacks 0010..0001, then re-applies forward and re-asserts
 #
 # Usage: bash tests/db/run.sh        (needs Postgres >= 15 binaries; PGBIN overrides location)
 set -euo pipefail
@@ -28,8 +28,8 @@ apply() { for f in "$@"; do psql_run -f "$f" >/dev/null; echo "   applied $(base
 assert() { psql_run "$@" 2>&1 | grep -E 'PASS|FAIL|ERROR' | sed 's/^.*NOTICE:  /   /; s/^psql:.*ERROR:  /   ERROR: /'; }
 
 H="$ROOT/tests/db/harness"; P="$ROOT/supabase/proposed"
-FWD=("$P/0001_p0_hotfix_reset_and_role_escalation.sql" "$P/0002_confidential_users_and_shared_invoices.sql" "$P/0003_attendance_idempotency.sql" "$P/0004_hr_decisions_and_audit.sql" "$P/0005_guardian_links.sql" "$P/0006_legacy_reads_staff_only.sql" "$P/0007_atomic_invoice_payment.sql" "$P/0008_shift_planner.sql" "$P/0009_guardian_requests.sql")
-RBK=("$P/0009_guardian_requests.rollback.sql" "$P/0008_shift_planner.rollback.sql" "$P/0007_atomic_invoice_payment.rollback.sql" "$P/0006_legacy_reads_staff_only.rollback.sql" "$P/0005_guardian_links.rollback.sql" "$P/0004_hr_decisions_and_audit.rollback.sql" "$P/0003_attendance_idempotency.rollback.sql" "$P/0002_confidential_users_and_shared_invoices.rollback.sql" "$P/0001_p0_hotfix_reset_and_role_escalation.rollback.sql")
+FWD=("$P/0001_p0_hotfix_reset_and_role_escalation.sql" "$P/0002_confidential_users_and_shared_invoices.sql" "$P/0003_attendance_idempotency.sql" "$P/0004_hr_decisions_and_audit.sql" "$P/0005_guardian_links.sql" "$P/0006_legacy_reads_staff_only.sql" "$P/0007_atomic_invoice_payment.sql" "$P/0008_shift_planner.sql" "$P/0009_guardian_requests.sql" "$P/0010_lesson_logs_and_parent_reports.sql")
+RBK=("$P/0010_lesson_logs_and_parent_reports.rollback.sql" "$P/0009_guardian_requests.rollback.sql" "$P/0008_shift_planner.rollback.sql" "$P/0007_atomic_invoice_payment.rollback.sql" "$P/0006_legacy_reads_staff_only.rollback.sql" "$P/0005_guardian_links.rollback.sql" "$P/0004_hr_decisions_and_audit.rollback.sql" "$P/0003_attendance_idempotency.rollback.sql" "$P/0002_confidential_users_and_shared_invoices.rollback.sql" "$P/0001_p0_hotfix_reset_and_role_escalation.rollback.sql")
 
 step "build production-schema replica"
 apply "$H/00_supabase_stubs.sql" "$H/10_legacy_schema.sql" "$H/20_cr360_v04_foundation.sql" "$H/25_test_helpers.sql"
@@ -42,7 +42,7 @@ apply "$H/30_fixtures.sql"
 step "BASELINE — reproduce audited vulnerabilities on the production schema"
 assert -v mode=baseline -f "$ROOT/tests/db/assert_legacy.sql"
 
-step "apply proposed migrations 0001-0009 (twice: idempotency)"
+step "apply proposed migrations 0001-0010 (twice: idempotency)"
 apply "${FWD[@]}"; apply "${FWD[@]}"
 
 step "FIXED — vulnerabilities closed, legacy workflows intact"
@@ -52,8 +52,9 @@ assert -f "$ROOT/tests/db/assert_guardians.sql"
 assert -f "$ROOT/tests/db/assert_payments.sql"
 assert -f "$ROOT/tests/db/assert_shifts.sql"
 assert -f "$ROOT/tests/db/assert_guardian_requests.sql"
+assert -f "$ROOT/tests/db/assert_lessons.sql"
 
-step "rollback 0009..0001, then re-apply forward"
+step "rollback 0010..0001, then re-apply forward"
 apply "${RBK[@]}"; apply "${FWD[@]}"
 assert -v mode=fixed -f "$ROOT/tests/db/assert_legacy.sql" | tail -1
 assert -f "$ROOT/tests/db/assert_after_migrations.sql" | tail -1
@@ -61,4 +62,5 @@ assert -f "$ROOT/tests/db/assert_guardians.sql" | tail -1
 assert -f "$ROOT/tests/db/assert_payments.sql" | tail -1
 assert -f "$ROOT/tests/db/assert_shifts.sql" | tail -1
 assert -f "$ROOT/tests/db/assert_guardian_requests.sql" | tail -1
+assert -f "$ROOT/tests/db/assert_lessons.sql" | tail -1
 echo; echo "ALL DATABASE HARNESS CHECKS PASSED"

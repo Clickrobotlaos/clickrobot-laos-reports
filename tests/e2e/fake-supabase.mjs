@@ -6,8 +6,8 @@
 import http from "node:http";
 
 const A = "10000000-0000-4000-8000-00000000000a", B = "10000000-0000-4000-8000-00000000000b";
-const U = { ceo: "00000000-0000-4000-8000-0000000000c0", mgr: "00000000-0000-4000-8000-0000000000a1", staff: "00000000-0000-4000-8000-0000000000a2", parent: "00000000-0000-4000-8000-0000000000e1" };
-export const TOKENS = { ceo: "tok-ceo", mgr: "tok-mgr", staff: "tok-staff", parent: "tok-parent" };
+const U = { ceo: "00000000-0000-4000-8000-0000000000c0", mgr: "00000000-0000-4000-8000-0000000000a1", staff: "00000000-0000-4000-8000-0000000000a2", parent: "00000000-0000-4000-8000-0000000000e1", sub: "00000000-0000-4000-8000-0000000000a3" };
+export const TOKENS = { ceo: "tok-ceo", mgr: "tok-mgr", staff: "tok-staff", parent: "tok-parent", sub: "tok-sub" };
 const USERS = Object.fromEntries(Object.entries(TOKENS).map(([k, v]) => [v, { id: U[k], aud: "authenticated", role: "authenticated", email: `${k}@test.invalid`, app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" }]));
 
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Vientiane" }).format(new Date());
@@ -28,10 +28,12 @@ const DB = {
     { user_id: U.ceo, role: "ceo", branch_id: null, active: true },
     { user_id: U.mgr, role: "manager", branch_id: A, active: true },
     { user_id: U.staff, role: "staff", branch_id: A, active: true },
+    { user_id: U.sub, role: "staff", branch_id: A, active: true },
   ],
   cr360_hr_employees: [
     { id: "20000000-0000-4000-8000-0000000000a1", auth_user_id: U.mgr, branch_id: A, display_name: "TEST Manager A", position: "Branch manager", employment_status: "active", employee_code: "E-01", start_date: "2025-01-01" },
     { id: "20000000-0000-4000-8000-0000000000a2", auth_user_id: U.staff, branch_id: A, display_name: "TEST Teacher A", position: "Teacher", employment_status: "active", employee_code: "E-02", start_date: "2025-06-01" },
+    { id: "20000000-0000-4000-8000-0000000000a3", auth_user_id: U.sub, branch_id: A, display_name: "TEST Substitute A", position: "Teacher", employment_status: "active", employee_code: "E-03", start_date: "2025-09-01" },
   ],
   cr360_hr_shifts: [
     { id: "s1", employee_id: "20000000-0000-4000-8000-0000000000a2", starts_at: iso(-3), ends_at: iso(-2.7), status: "completed" },
@@ -79,6 +81,13 @@ const DB = {
     { id: "x2", date: `${today.slice(0, 7)}-05`, branch_id: B, category: "Equipment", amount: 450000, currency: "LAK", rate_to_lak: 1, amount_lak: 450000 },
   ],
   closed_months: [],
+  cr360_lesson_logs: [
+    { id: "a1000000-0000-4000-8000-000000000001", class_id: "40000000-0000-4000-8000-000000000001", branch_id: A, lesson_date: new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10),
+      unit: "Unit 3: Sensors", lesson_title: "Colour sensor line follower", level: "Spike Prime L2", covered: "Calibrated the colour sensor", next_plan: "Add speed control with PID", substitute_notes: "Kits are in cabinet B" },
+  ],
+  cr360_student_lesson_notes: [
+    { id: "a2000000-0000-4000-8000-000000000001", lesson_log_id: "a1000000-0000-4000-8000-000000000001", package_id: pk(1).id, rubric: { programming: 4 }, teacher_note: "Strong debugging", report_en: "Your child led the debugging.", report_lo: "ລູກຂອງທ່ານເປັນຜູ້ນຳແກ້ບັນຫາ.", report_source: "teacher", status: "approved" },
+  ],
   settings: [],
 };
 
@@ -87,6 +96,9 @@ const RPC = {
   cr360_guardian_children: (uid) => uid === U.parent ? [
     { student_code: "TST-001", student_name: "Test Child 1", package_id: pk(1).id, program_name: "TEST Spike Prime", branch_name: "TEST Branch A", package: "8 sessions", sessions_total: 8, sessions_used: 7, active: true, start_date: "2026-10-01" },
     { student_code: "TST-002", student_name: "Test Child 2", package_id: pk(2).id, program_name: "TEST Spike Prime", branch_name: "TEST Branch A", package: "12 sessions", sessions_total: 12, sessions_used: 3, active: true, start_date: "2026-10-01" },
+  ] : [],
+  cr360_guardian_reports: (uid) => uid === U.parent ? [
+    { lesson_date: "2026-11-04", class_name: "Spike Prime A", unit: "Unit 3: Sensors", lesson_title: "Colour sensor line follower", level: "Spike Prime L2", rubric: { programming: 4 }, report_en: "Your child led the debugging today.", report_lo: "ມື້ນີ້ລູກຂອງທ່ານເປັນຜູ້ນຳແກ້ບັນຫາ." },
   ] : [],
   cr360_guardian_links_for: () => [
     { id: "90000000-0000-4000-8000-000000000001", guardian_email: "parent@test.invalid", relationship: "mother", created_at: iso(-2), verified_at: iso(-1), consent_version: "consent-test", revoked_at: null, revoke_reason: null },

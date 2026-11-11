@@ -38,6 +38,10 @@ const cases = [
     [`POST guardian-requests/${r} cross-site → 403`, async () => (await fetch(`${B}/api/cr360/guardian-requests/${r}`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
     [`POST guardian-requests/${r} anon → 401`, async () => (await fetch(`${B}/api/cr360/guardian-requests/${r}`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
   ]),
+  ...["save", "note", "approve", "draft"].flatMap((r) => [
+    [`POST lessons/${r} cross-site → 403`, async () => (await fetch(`${B}/api/cr360/lessons/${r}`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
+    [`POST lessons/${r} anon → 401`, async () => (await fetch(`${B}/api/cr360/lessons/${r}`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
+  ]),
   ["locale rejects unknown value → 400", async () => (await fetch(`${B}/api/cr360/locale`, { method: "POST", headers: { ...j, origin: B }, body: JSON.stringify({ locale: "fr" }) })).status === 400],
   ["legacy /login still served → 200", async () => (await fetch(`${B}/login`)).status === 200],
 ];

@@ -46,6 +46,14 @@ const CASES = [
   ["parent", "/360/parent", "Requests are not enabled yet"],   // 0009 not applied in the fake → honest disabled state
   ["parent", "/360/staff", NO_ACCESS],
   ["parent", "/360/students/TST-001", NO_ACCESS],
+  ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Draft all with AI"],
+  ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Add speed control with PID"],
+  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Read-only: you can see where this class is up to"],
+  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Kits are in cabinet B"],
+  ["mgr", "/360/lessons/40000000-0000-4000-8000-000000000002", NO_ACCESS],
+  ["parent", "/360/lessons/40000000-0000-4000-8000-000000000001", NO_ACCESS],
+  ["parent", "/360/parent", "Your child led the debugging today."],
+  ["staff", "/360/staff", "Lesson log & parent reports"],
 ];
 // Negative content checks: text that must NOT appear for a persona/page.
 const MUST_NOT = [
@@ -54,7 +62,9 @@ const MUST_NOT = [
   ["mgr", "/360/classes", "VEX IQ Team"],        // other-branch class name hidden even in conflicts
   ["staff", "/360/staff", "LAK"],                // no money shown to staff
   ["parent", "/360/parent", "Lead One"],
-  ["mgr", "/360/staff", "My classes today"],            // manager teaches no class today in fixtures → no roll call on StaffOS
+  ["mgr", "/360/staff", "My classes today"],
+  ["sub", "/360/lessons/40000000-0000-4000-8000-000000000001", "Draft all with AI"],   // substitute gets no editing / AI
+  ["parent", "/360/parent", "Strong debugging"],                                        // private teacher note never reaches parents            // manager teaches no class today in fixtures → no roll call on StaffOS
 ];
 
 const fake = await start(54399);
@@ -104,7 +114,7 @@ for (const [persona, path, forbidden] of MUST_NOT) {
 }
 
 // Lao locale + mobile layout (no horizontal overflow) on representative pages.
-for (const [persona, path, lao] of [["ceo", "/360/ceo", "ແພັກເກດທີ່ໃຊ້ງານ"], ["staff", "/360/staff", "ລົງເວລາ"], ["parent", "/360/parent", "ຄັ້ງຮຽນທີ່ເຫຼືອ"], ["mgr", "/360/classes", "ຕາຕະລາງປະຈຳອາທິດ"], ["mgr", "/360/crm", "ຕິດຕໍ່ແລ້ວ"]]) {
+for (const [persona, path, lao] of [["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "ຮ່າງທັງໝົດດ້ວຍ AI"], ["ceo", "/360/ceo", "ແພັກເກດທີ່ໃຊ້ງານ"], ["staff", "/360/staff", "ລົງເວລາ"], ["parent", "/360/parent", "ຄັ້ງຮຽນທີ່ເຫຼືອ"], ["mgr", "/360/classes", "ຕາຕະລາງປະຈຳອາທິດ"], ["mgr", "/360/crm", "ຕິດຕໍ່ແລ້ວ"]]) {
   const { ctx, page, text, errors } = await open(persona, path, { lo: true, mobile: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   const problems = [...errors];
@@ -112,6 +122,24 @@ for (const [persona, path, lao] of [["ceo", "/360/ceo", "ແພັກເກດ�
   if (overflow) problems.push("horizontal page overflow at 390px");
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/mobile-lo-${persona}${path.replace(/\//g, "_")}.png`, fullPage: true });
   console.log(`${problems.length ? "FAIL" : "PASS"}  ${persona.padEnd(6)} ${path} [lo, 390px]${problems.length ? "  → " + problems.join("; ") : ""}`);
+  if (problems.length) failed++;
+  await ctx.close();
+}
+
+// Interaction: a teacher clicks "Use template" → both report boxes of each student fill in (no AI, no save).
+{
+  const { ctx, page, errors } = await open("staff", "/360/lessons/40000000-0000-4000-8000-000000000001");
+  const lessonTitle = await page.locator("#lf-lessonTitle").inputValue();
+  await page.getByRole("button", { name: "Use template" }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("textarea[lang=lo]")].some((t) => t.value.length > 10), null, { timeout: 15000 }).catch(() => {});
+  const lo = await page.locator("textarea[lang=lo]").first().inputValue();
+  const en = await page.locator("textarea[lang=en]").first().inputValue();
+  const problems = [...errors];
+  if (lessonTitle !== "Add speed control with PID") problems.push(`lesson title not pre-filled from last plan (got "${lessonTitle}")`);
+  if (!lo.includes("ລູກຂອງທ່ານ")) problems.push("Lao template not filled");
+  if (!/your child/i.test(en)) problems.push("English template not filled");
+  if (/Test Child/.test(en + lo)) problems.push("child name leaked into template text");
+  console.log(`${problems.length ? "FAIL" : "PASS"}  staff  lesson page: pre-filled title + "Use template" fills both languages${problems.length ? "  → " + problems.join("; ") : ""}`);
   if (problems.length) failed++;
   await ctx.close();
 }

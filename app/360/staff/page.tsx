@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { canUseWorkspace } from "@/lib/cr360/access";
@@ -82,6 +83,7 @@ export default async function StaffOsPage() {
             {myClasses.map((c) => (
               <div key={c.id} style={{ marginBottom: 14 }}>
                 <h3 style={{ fontSize: 15, margin: "6px 0" }}>{c.name} · {(c.start_time ?? "").slice(0, 5)}–{(c.end_time ?? "").slice(0, 5)}{c.room ? ` · ${c.room}` : ""}</h3>
+                <p style={{ margin: "0 0 8px" }}><Link href={`/360/lessons/${c.id}`} className="cr-btn ghost" style={{ minHeight: 40 }}>{t.lessonsLink} →</Link></p>
                 <RollCall classId={c.id} entries={roster(c, rc.bookings, rc.packages, rc.attendance, today)} t={t} />
               </div>
             ))}

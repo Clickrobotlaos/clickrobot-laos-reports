@@ -30,6 +30,9 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const reqRes = await sb.from("cr360_guardian_requests").select("id,kind,start_date,end_date,message,status,review_note,created_at")
     .eq("student_code", current.code).order("created_at", { ascending: false }).limit(20);
   const requestsEnabled = !reqRes.error;
+  // Approved class reports only (0010); missing function → section hidden.
+  const repRes = await sb.rpc("cr360_guardian_reports", { p_student_code: current.code });
+  const reports = (repRes.error ? null : (repRes.data ?? [])) as { lesson_date: string; class_name: string; unit: string | null; lesson_title: string; level: string | null; report_en: string | null; report_lo: string | null }[] | null;
 
   return (
     <>
@@ -66,6 +69,23 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         })}
       </div>
       <p className="cr-muted" style={{ marginTop: 12 }}>{t.balanceNote} {t.withdrawConsent}</p>
+
+      {reports && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="cr-h">
+          <h2 id="cr-h">{t.classReports}</h2>
+          {reports.length === 0 ? <p className="cr-muted">{t.noReportsYet}</p> : (
+            <ul className="cr-list">{reports.map((r, i) => {
+              const text = ctx.locale === "lo" ? (r.report_lo || r.report_en) : (r.report_en || r.report_lo);
+              return (
+                <li key={`${r.lesson_date}-${i}`} style={{ display: "grid", gap: 4, justifyContent: "stretch" }}>
+                  <span><b>{r.lesson_date}</b> · {r.class_name} · {[r.unit, r.lesson_title].filter(Boolean).join(" — ")}{r.level ? ` · ${r.level}` : ""}</span>
+                  <span lang={ctx.locale === "lo" && r.report_lo ? "lo" : "en"}>{text}</span>
+                </li>
+              );
+            })}</ul>
+          )}
+        </section>
+      )}
 
       <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="rq-h">
         <h2 id="rq-h">{t.myRequests}</h2>
