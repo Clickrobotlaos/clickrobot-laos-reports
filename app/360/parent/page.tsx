@@ -7,6 +7,8 @@ import { Unauthorized } from "@/components/cr360/Blocks";
 import { ParentRequests, type ParentRequestRow } from "@/components/cr360/ParentRequests";
 import { ConsentChoices, type ConsentPurpose } from "@/components/cr360/ConsentChoices";
 import { MEDIA_BUCKET, SIGNED_URL_SECONDS } from "@/lib/cr360/media-rules";
+import { NovaAsk } from "@/components/cr360/NovaAsk";
+import { aiStatus } from "@/lib/cr360/ai-reports";
 import { Conversation, NewThread, ThreadList, type MessageRow, type ThreadRow } from "@/components/cr360/Messages";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 
@@ -208,6 +210,11 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
             <p className="cr-muted" style={{ marginTop: 8 }}>{t.invoicesNote}</p>
           </>
         )}
+      </section>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="nova-h">
+        <h2 id="nova-h">✨ {t.novaTitle}</h2>
+        <NovaAsk studentCode={current.code} ready={aiStatus().ready && consentState.ai_reports === true} t={t} />
       </section>
 
       <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="msg-h">

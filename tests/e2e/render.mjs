@@ -60,6 +60,7 @@ const CASES = [
   ["parent", "/360/parent", "Public and marketing use"],
   ["parent", "/360/parent", "Ask about renewal"],
   ["ceo", "/360/hr", "People & access"],
+  ["parent", "/360/parent", "NOVA will be available after"],             // AI off by default
   ["mgr", "/360/hr", NO_ACCESS],
   ["staff", "/360/staff", "My pay"],                         // 1 session left → renewal reminder                  // consent choices (0013)
   ["parent", "/360/parent", "Separate consent"],

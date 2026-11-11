@@ -134,6 +134,14 @@ language sql stable security definer set search_path = '' as $$
      and p_purpose in ('portal_media', 'ai_reports', 'notifications', 'public_marketing')
 $$;
 
+-- Guardian: may AI be used for THIS child right now? (same rule as staff: any withdrawal wins)
+create or replace function public.cr360_guardian_ai_allowed(p_student_code text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce(cr360_authz.is_verified_guardian_of(p_student_code) and cr360_authz.student_consent(p_student_code, 'ai_reports'), false)
+$$;
+revoke all on function public.cr360_guardian_ai_allowed(text) from public, anon;
+grant execute on function public.cr360_guardian_ai_allowed(text) to authenticated;
+
 revoke all on function public.cr360_guardian_consent_set(text, text, boolean, text) from public, anon;
 revoke all on function public.cr360_guardian_consent_record(uuid, text, boolean, text, text) from public, anon;
 revoke all on function public.cr360_guardian_my_consents() from public, anon;

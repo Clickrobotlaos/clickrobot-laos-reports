@@ -234,3 +234,6 @@ export const HrAdminInput = z.discriminatedUnion("action", [
   z.object({ action: z.enum(["grant_payroll", "revoke_payroll", "suspend", "reinstate"]), userId: z.string().uuid(), reason: z.string().trim().min(3).max(300) }).strict(),
   z.object({ action: z.literal("offboard"), userId: z.string().uuid(), effectiveDate: isoDay, reason: z.string().trim().min(3).max(300) }).strict(),
 ]);
+
+/** NOVA parent question (the child is taken from the parent's verified links, never trusted from the browser). */
+export const NovaInput = z.object({ studentCode: z.string().trim().min(1).max(80), question: z.string().trim().min(2).max(500) }).strict();

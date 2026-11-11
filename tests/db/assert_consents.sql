@@ -30,6 +30,7 @@ end $$;
 select t.ok(public.cr360_guardian_consent_set('TST-001', 'ai_reports', true, 'consent-test-v1'), 'D guardian grants AI reports');
 select t.ok(not public.cr360_guardian_consent_set('TST-001', 'ai_reports', true, 'consent-test-v1'), 'D granting again is a no-op');
 select t.ok(public.cr360_guardian_consent_set('TST-001', 'portal_media', true, 'consent-test-v1'), 'D guardian grants private portal media');
+select t.ok(public.cr360_guardian_ai_allowed('TST-001') = true and public.cr360_guardian_ai_allowed('TST-002') = false, 'D guardian can check AI permission for own child only');
 
 -- portal media does NOT imply public marketing
 select t.claims('00000000-0000-0000-0000-0000000000a2');
