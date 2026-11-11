@@ -10,11 +10,11 @@ npm run dev                       # legacy app at /, ClickRobot 360 at /360
 ## Checks (all must pass before merging)
 ```bash
 npm run typecheck
-npm test                          # 108 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
+npm test                          # 117 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
-npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 34 auth-boundary checks
-npm run test:render               # 38 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
+npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 36 auth-boundary checks
+npm run test:render               # 41 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
 ```
 Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0008 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash

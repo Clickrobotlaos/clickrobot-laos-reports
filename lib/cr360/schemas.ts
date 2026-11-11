@@ -95,3 +95,10 @@ export const ShiftCancelInput = z.object({
   shiftId: z.string().uuid(),
   reason: z.string().trim().min(3).max(300),
 }).strict();
+
+/** Teacher roll call. The date is always "today in Vientiane" on the server — never from the client. */
+export const MarkAttendanceInput = z.object({
+  classId: z.string().uuid(),
+  packageId: z.string().uuid(),
+  status: z.enum(["Present", "Absent"]),
+}).strict();

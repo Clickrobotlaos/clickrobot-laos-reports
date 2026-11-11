@@ -8,6 +8,9 @@ import { loadScopedClasses, loadStaffNames } from "@/lib/cr360/legacy-classes";
 import { loadNames } from "@/lib/cr360/legacy-students";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { ClassroomFill } from "@/components/cr360/ClassroomFill";
+import { RollCall } from "@/components/cr360/RollCall";
+import { roster } from "@/lib/cr360/rollcall";
+import { loadRollCallData } from "@/lib/cr360/legacy-rollcall";
 
 export const dynamic = "force-dynamic";
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,6 +36,8 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
   const clsLabel = (id: string) => (inScope.has(id) ? byId.get(id)?.name ?? "—" : "(another branch)");
   const today = classes.filter((c) => c.day_of_week === dow).sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? ""));
   const hhmm = (s: string | null) => (s ?? "").slice(0, 5);
+  const isToday = date === businessDate();
+  const rc = isToday ? await loadRollCallData(sb, today.map((c) => c.id), date) : null;
 
   const card = (c: LegacyClass, big: boolean) => {
     const o = occupancy(c, bookings, date);
@@ -50,6 +55,12 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
         </p>
         <ClassroomFill capacity={o.capacity} used={o.used} label={label} />
         <p style={{ margin: 0 }}><b>{o.used}</b>{o.capacity ? ` / ${o.capacity}` : ""} {t.seatsUsed}{o.makeup ? ` · ${o.makeup} ${t.makeupsToday}` : ""}{!o.capacity ? ` · ${t.unlimited}` : ""}</p>
+        {rc && (
+          <details style={{ marginTop: 10 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600, minHeight: 32 }}>{t.rollCall}</summary>
+            <RollCall classId={c.id} entries={roster(c, rc.bookings, rc.packages, rc.attendance, date)} t={t} />
+          </details>
+        )}
       </section>
     ) : (
       <div key={c.id} className="cr-slot">

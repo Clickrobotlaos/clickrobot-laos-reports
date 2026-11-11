@@ -37,6 +37,8 @@ const CASES = [
   ["mgr", "/360/finance", NO_ACCESS],
   ["mgr", "/360/ceo", NO_ACCESS],
   ["staff", "/360/staff", "Attendance (last 30 days)"],
+  ["staff", "/360/staff", "My classes today"],
+  ["mgr", "/360/classes", "Roll call"],
   ["staff", "/360/students", NO_ACCESS],
   ["staff", "/360/crm", NO_ACCESS],
   ["parent", "/360/parent", "Test Child 1"],
@@ -51,6 +53,7 @@ const MUST_NOT = [
   ["mgr", "/360/classes", "VEX IQ Team"],        // other-branch class name hidden even in conflicts
   ["staff", "/360/staff", "LAK"],                // no money shown to staff
   ["parent", "/360/parent", "Lead One"],
+  ["mgr", "/360/staff", "My classes today"],            // manager teaches no class today in fixtures → no roll call on StaffOS
 ];
 
 const fake = await start(54399);

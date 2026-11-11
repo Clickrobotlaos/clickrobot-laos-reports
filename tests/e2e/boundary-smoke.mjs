@@ -32,6 +32,8 @@ const cases = [
     [`POST shifts/${r} cross-site → 403`, async () => (await fetch(`${B}/api/cr360/shifts/${r}`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
     [`POST shifts/${r} anon → 401`, async () => (await fetch(`${B}/api/cr360/shifts/${r}`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
   ]),
+  ["POST attendance/mark cross-site → 403", async () => (await fetch(`${B}/api/cr360/attendance/mark`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
+  ["POST attendance/mark anon → 401", async () => (await fetch(`${B}/api/cr360/attendance/mark`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
   ["locale rejects unknown value → 400", async () => (await fetch(`${B}/api/cr360/locale`, { method: "POST", headers: { ...j, origin: B }, body: JSON.stringify({ locale: "fr" }) })).status === 400],
   ["legacy /login still served → 200", async () => (await fetch(`${B}/login`)).status === 200],
 ];

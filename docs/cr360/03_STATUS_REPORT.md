@@ -33,7 +33,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 4 | NOVA AI chief of staff | Not started | Needs approved data scope and delivery settings |
 | 5 | Students & guardians | **Live + On approval (0005)** | `/360/students` list/detail; guardian links with in-person verification UI |
 | 6 | Timetables/classes/rooms | **Partial (live)** | `/360/classes` weekly timetable, teacher/room conflict detection across branches. Class editing stays in Records app |
-| 7 | Attendance & session deductions | **Partial (live)** | Ledger rebuilt from attendance with counter reconciliation (0/182 mismatches). Marking attendance stays in Records app. Double debit already blocked by legacy constraint (verified) |
+| 7 | Attendance & session deductions | **Live** | Teacher roll call ("My classes today" in StaffOS; also on `/360/classes` for managers): today only, assigned classes only, booked students only, no Present without sessions left, idempotent, race-safe. Ledger rebuilt from attendance with counter reconciliation (0/182 mismatches). Double debit blocked by the legacy one-row-per-day constraint (verified) |
 | 8 | Packages, renewals, makeups | **Partial (live)** | Balances, low-balance and overdrawn flags. Missing: renewal/extension/freeze workflows, makeup credits ledger |
 | 9 | Parent portal | **On approval (0005 + 0006)** | `/360/parent`: children, course, branch, sessions left. Missing: invoices, calendar, media, requests |
 | 10 | Learning progression | Not started | |
@@ -67,13 +67,14 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 ## Test evidence
 | Suite | Count | Command |
 |---|---|---|
-| Unit (domain rules, access, contracts) | 108 | `npm test` |
+| Unit (domain rules, access, contracts) | 117 | `npm test` |
 | Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 177 | `npm run test:db` |
-| Auth-boundary smoke against a production build | 34 | `npm run test:smoke` |
-| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 38 | `npm run test:render` |
+| Auth-boundary smoke against a production build | 36 | `npm run test:smoke` |
+| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 41 | `npm run test:render` |
 | Visual review of every rendered page (desktop + phone, light + dark) | screenshots reviewed | — |
 
 ## Not verified (be aware)
+- Roll call writes go through the legacy attendance policy, which allows legacy roles `staff`, `finance`, `admin` and `co_admin`. A user whose legacy role is `manager` gets "not allowed". That's existing legacy behaviour; production currently has no legacy `manager` users.
 - **No screen has been used with a real account against the real database**: there were no test credentials. Every `/360` page *has* been rendered in a real browser against a fake Supabase with fictional data (`npm run test:render`), and the screenshots were reviewed. That review found and fixed two layout bugs (category bars not stretching, parent-link buttons stacking) and one unclear message (the "Low" balance banner). Real sign-in, real RLS through the API, and real data volumes still need a staging check.
 - Supabase Auth, PostgREST and Storage themselves are not in the local harness.
 - Lao translations need a native speaker's review.

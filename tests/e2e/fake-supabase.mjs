@@ -94,10 +94,25 @@ const RPC = {
   ],
 };
 
+function matchOne(r, col, op, raw) {
+  const x = r[col] === undefined ? null : r[col];
+  const val = raw === "null" ? null : raw;
+  if (op === "eq") return String(x) === String(val);
+  if (op === "neq") return String(x) !== String(val);
+  if (op === "is") return x === null && val === null;
+  return true;
+}
+
 function applyFilters(rows, params) {
   let out = rows;
+  // or=(colA.eq.v,colB.eq.v) — only the simple eq/neq/is form used by /360
+  const orExpr = params.get("or");
+  if (orExpr) {
+    const parts = orExpr.replace(/^\(|\)$/g, "").split(",").map((p) => p.split("."));
+    out = out.filter((r) => parts.some(([col, op, ...rest]) => matchOne(r, col, op, rest.join("."))));
+  }
   for (const [k, v] of params) {
-    if (["select", "order", "offset", "limit"].includes(k)) continue;
+    if (["select", "order", "offset", "limit", "or"].includes(k)) continue;
     const m = /^(eq|neq|gte|lt|lte|gt|in|is)\.(.*)$/.exec(v);
     if (!m) continue;
     const [, op, raw] = m;

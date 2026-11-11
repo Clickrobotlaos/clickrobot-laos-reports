@@ -33,11 +33,11 @@ Browser (Lao/English, mobile-first)
 | `lib/cr360/i18n.ts` | `en` / `lo` dictionaries, Asia/Vientiane business dates |
 | `lib/cr360/viewer.ts`, `supabase-server.ts`, `api.ts` | Server-only auth context and helpers |
 | `app/360/**` | Role workspaces: `ceo`, `manager`, `students` (+ guardian link admin), `classes` (timetable, 2.5D fill), `crm` (Kanban), `finance` (operational, unreconciled), `staff`, `parent`, `schools` |
-| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision`, `guardians/{link,verify,revoke}`, `crm/lead-action`, `finance/mark-paid`, `shifts/{create,cancel}` |
+| `app/api/cr360/**` | `me`, `locale`, `staff/{clock,leave,ot,correction}`, `approvals/decision`, `guardians/{link,verify,revoke}`, `crm/lead-action`, `finance/mark-paid`, `shifts/{create,cancel}`, `attendance/mark` |
 | `components/cr360/**` | Shell (rail + mobile bottom nav), TimeClock, RequestForms, BranchChart |
 | `supabase/proposed/**` | Migrations + rollbacks awaiting approval |
 | `supabase/tests/rls_negative_tests.sql` | Staging-only RLS negative tests (self-rolling-back) |
-| `tests/unit/**` | Vitest (108 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
+| `tests/unit/**` | Vitest (117 tests) · `tests/e2e/boundary-smoke.mjs` auth-boundary smoke |
 | `tests/db/**` | Local Postgres harness: schema-only production replica, baseline exploit reproduction, migration/rollback verification |
 
 ## ADRs

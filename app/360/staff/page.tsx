@@ -6,6 +6,11 @@ import { attendancePercent } from "@/lib/cr360/staff-metrics";
 import { Unauthorized, StatusBadge } from "@/components/cr360/Blocks";
 import { TimeClock } from "@/components/cr360/TimeClock";
 import { RequestForms } from "@/components/cr360/RequestForms";
+import { RollCall } from "@/components/cr360/RollCall";
+import { roster } from "@/lib/cr360/rollcall";
+import { dayOfWeek, type LegacyClass } from "@/lib/cr360/timetable";
+import { loadRollCallData } from "@/lib/cr360/legacy-rollcall";
+import { businessDate } from "@/lib/cr360/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +33,15 @@ export default async function StaffOsPage() {
     sb.from("cr360_hr_correction_requests").select("id,work_date,correction_type,status,created_at").eq("employee_id", emp.id).order("created_at", { ascending: false }).limit(10),
     sb.from("cr360_hr_sites").select("enabled,approved_at").eq("branch_id", emp.branch_id).maybeSingle(),
   ]);
+
+  // Classes this person teaches/assists today (legacy classes; teacher_id is the auth user id).
+  const today = businessDate(now);
+  const uid = ctx.viewer!.userId;
+  const { data: myCls } = await sb.from("classes")
+    .select("id,name,program_id,branch_id,teacher_id,assistant_id,day_of_week,start_time,end_time,room,capacity,level,active")
+    .or(`teacher_id.eq.${uid},assistant_id.eq.${uid}`).eq("active", true).eq("day_of_week", dayOfWeek(today)).order("start_time");
+  const myClasses = (myCls ?? []) as LegacyClass[];
+  const rc = await loadRollCallData(sb, myClasses.map((c) => c.id), today);
 
   const shiftRows = shifts.data ?? [];
   const punchRows = (punches.data ?? []) as { id: string; kind: "in" | "out"; occurred_at: string; distance_m: number; reported_accuracy_m: number; source: string }[];
@@ -61,6 +75,18 @@ export default async function StaffOsPage() {
           <div className="cr-gauge" aria-hidden="true"><span style={{ width: `${pct ?? 0}%` }} /></div>
           <p className="cr-muted">{t.attendanceHint}</p>
         </section>
+
+        {myClasses.length > 0 && (
+          <section className="cr-card" aria-labelledby="mc-h" style={{ gridColumn: "1 / -1" }}>
+            <h2 id="mc-h">{t.myClassesToday}</h2>
+            {myClasses.map((c) => (
+              <div key={c.id} style={{ marginBottom: 14 }}>
+                <h3 style={{ fontSize: 15, margin: "6px 0" }}>{c.name} · {(c.start_time ?? "").slice(0, 5)}–{(c.end_time ?? "").slice(0, 5)}{c.room ? ` · ${c.room}` : ""}</h3>
+                <RollCall classId={c.id} entries={roster(c, rc.bookings, rc.packages, rc.attendance, today)} t={t} />
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className="cr-card" aria-labelledby="shifts-h">
           <h2 id="shifts-h">{t.myShifts}</h2>
