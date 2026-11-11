@@ -1,0 +1,78 @@
+# ClickRobot 360 CI. Uses NO secrets and NEVER connects to Supabase:
+#  - app: typecheck, lint (new code), unit tests, production build, auth-boundary smoke
+#  - db:  local throwaway Postgres replica of the production schema; proposed migrations + rollbacks
+#  - render: every /360 page rendered as 4 personas against a fake Supabase (fictional data)
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Legacy Records-app files have pre-existing lint debt; gate on the ClickRobot 360 code.
+      - run: npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
+      - run: npm test
+      - run: npm run build
+      - name: Auth-boundary smoke test
+        run: |
+          npx next start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:3000/login && break; sleep 1; done
+          BASE_URL=http://localhost:3000 npm run test:smoke
+      - name: No service-role key in client bundle
+        run: |
+          if grep -rlE "service_role|SERVICE_ROLE" .next/static; then echo "::error::service-role reference in client bundle"; exit 1; fi
+
+  db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Postgres binaries
+        run: ls -d /usr/lib/postgresql/*/bin || (sudo apt-get update && sudo apt-get install -y postgresql)
+      - run: bash tests/db/run.sh
+
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Not a project dependency (the dev container ships its own); install the same version here only.
+      - run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
+      - run: npm run test:render
+        env:
+          SHOTS: ${{ runner.temp }}/shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-screenshots
+          path: ${{ runner.temp }}/shots
+          retention-days: 7
