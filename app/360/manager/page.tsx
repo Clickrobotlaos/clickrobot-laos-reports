@@ -72,9 +72,17 @@ export default async function ManagerPage() {
     })),
   ];
 
+  // Parent messages (0018): unread conversations visible to this person; missing table → no link.
+  const msgRes = await sb.from("cr360_message_threads").select("last_message_at,staff_read_at").eq("status", "open").limit(200);
+  const msgUnread = msgRes.error ? null : ((msgRes.data ?? []) as { last_message_at: string; staff_read_at: string | null }[])
+    .filter((r) => !r.staff_read_at || r.staff_read_at < r.last_message_at).length;
+
   return (
     <>
       <h1 className="cr-h1">{t.ws_manager}</h1>
+      {msgUnread !== null && (
+        <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/messages" style={{ minHeight: 40 }}>💬 {t.parentMessages}{msgUnread > 0 ? ` · ${msgUnread} ${t.unreadCount}` : ""}</a></p>
+      )}
       <div className="cr-grid c2">
         <section className="cr-card" aria-labelledby="q-h">
           <h2 id="q-h">{t.pendingQueue} ({queue.length})</h2>

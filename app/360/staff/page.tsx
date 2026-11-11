@@ -72,9 +72,17 @@ export default async function StaffOsPage() {
     ...(corr.data ?? []).map((r) => ({ id: r.id, kind: t.correction, detail: `${r.work_date} · ${r.correction_type}`, status: r.status, at: r.created_at })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
+  // Parent messages (0018): unread conversations visible to this person; missing table → no link.
+  const msgRes = await sb.from("cr360_message_threads").select("last_message_at,staff_read_at").eq("status", "open").limit(200);
+  const msgUnread = msgRes.error ? null : ((msgRes.data ?? []) as { last_message_at: string; staff_read_at: string | null }[])
+    .filter((r) => !r.staff_read_at || r.staff_read_at < r.last_message_at).length;
+
   return (
     <>
       <h1 className="cr-h1">{t.ws_staff}</h1>
+      {msgUnread !== null && (
+        <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/messages" style={{ minHeight: 40 }}>💬 {t.parentMessages}{msgUnread > 0 ? ` · ${msgUnread} ${t.unreadCount}` : ""}</a></p>
+      )}
       <p className="cr-sub">{emp.display_name} · {emp.position}</p>
       <div className="cr-banner info">{t.moneyHidden}</div>
       {staffAnnouncements.length > 0 && (

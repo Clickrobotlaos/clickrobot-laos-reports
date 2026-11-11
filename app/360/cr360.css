@@ -153,3 +153,8 @@
 .cr-media-grid { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .cr-media-card { border-radius: 14px; overflow: hidden; background: var(--c-surface2); }
 .cr-media-card img, .cr-media-card video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; }
+
+/* Messaging */
+.cr-chat { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.cr-chat li { max-width: 85%; padding: 10px 12px; border-radius: 14px; background: var(--c-surface2); }
+.cr-chat li.mine { justify-self: end; background: var(--c-okbg); }

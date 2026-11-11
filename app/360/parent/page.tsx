@@ -7,6 +7,7 @@ import { Unauthorized } from "@/components/cr360/Blocks";
 import { ParentRequests, type ParentRequestRow } from "@/components/cr360/ParentRequests";
 import { ConsentChoices, type ConsentPurpose } from "@/components/cr360/ConsentChoices";
 import { MEDIA_BUCKET, SIGNED_URL_SECONDS } from "@/lib/cr360/media-rules";
+import { Conversation, NewThread, ThreadList, type MessageRow, type ThreadRow } from "@/components/cr360/Messages";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
  * returns children whose link is verified, consented and not revoked. No other table is queried, so a
  * guessed ?child= value can only select among the guardian's own children.
  */
-export default async function ParentPage({ searchParams }: { searchParams: Promise<{ child?: string }> }) {
+export default async function ParentPage({ searchParams }: { searchParams: Promise<{ child?: string; thread?: string }> }) {
   const ctx = await loadViewer();
   const t = dict(ctx.locale);
   if (!canUseWorkspace(ctx.viewer, "parent")) return <Unauthorized t={t} />;
@@ -25,7 +26,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   if (children.length === 0) {
     return (<><h1 className="cr-h1">{t.ws_parent}</h1><div className="cr-card"><p>{t.noChildren}</p></div></>);
   }
-  const wanted = (await searchParams).child;
+  const sp = await searchParams;
+  const wanted = sp.child;
   const current = children.find((c) => c.code === wanted) ?? children[0];
   const sb = await supabaseServer();
   // RLS returns only this guardian's own rows; table missing (0009 not applied) → error → disabled.
@@ -62,6 +64,15 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const annRes = await sb.rpc("cr360_guardian_announcements");
   const announcements = (annRes.error ? [] : annRes.data ?? []) as { id: string; title_en: string; title_lo: string | null; body_en: string; body_lo: string | null; show_from: string; branch_name: string | null }[];
   const lo = ctx.locale === "lo";
+
+  // Messages (0018): RLS returns only this guardian's threads for verified children.
+  const thRes = await sb.from("cr360_message_threads").select("id,subject,status,last_message_at,guardian_read_at")
+    .eq("student_code", current.code).order("last_message_at", { ascending: false }).limit(30);
+  const messagingEnabled = !thRes.error;
+  const threads: ThreadRow[] = ((thRes.data ?? []) as { id: string; subject: string; status: string; last_message_at: string; guardian_read_at: string | null }[])
+    .map((r) => ({ ...r, unread: !r.guardian_read_at || r.guardian_read_at < r.last_message_at }));
+  const openThread = sp.thread && threads.find((x) => x.id === sp.thread) ? threads.find((x) => x.id === sp.thread)! : null;
+  const thMsgs = openThread ? ((await sb.from("cr360_messages").select("id,sender_side,body,created_at").eq("thread_id", openThread.id).order("id").limit(500)).data ?? []) as MessageRow[] : [];
 
   // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
   const conRes = await sb.rpc("cr360_guardian_my_consents");
@@ -195,6 +206,19 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               ))}</ul>
             )}
             <p className="cr-muted" style={{ marginTop: 8 }}>{t.invoicesNote}</p>
+          </>
+        )}
+      </section>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="msg-h">
+        <h2 id="msg-h">💬 {t.messages}</h2>
+        {!messagingEnabled ? <p className="cr-muted">{t.portalSoon}</p> : (
+          <>
+            <p className="cr-muted">{t.messagesNote}</p>
+            <ThreadList threads={threads} current={openThread?.id ?? null} hrefBase={`/360/parent?child=${encodeURIComponent(current.code)}&`} t={t} />
+            {openThread && <div style={{ marginTop: 12 }}><h3 style={{ margin: "0 0 8px" }}>{openThread.subject}</h3>
+              <Conversation threadId={openThread.id} messages={thMsgs} side="guardian" canClose={false} status={openThread.status} t={t} /></div>}
+            <NewThread studentCode={current.code} t={t} />
           </>
         )}
       </section>

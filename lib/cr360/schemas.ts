@@ -221,3 +221,10 @@ export const AnnouncementInput = z.discriminatedUnion("action", [
   }).strict(),
   z.object({ action: z.enum(["publish", "withdraw"]), id: z.string().uuid() }).strict(),
 ]);
+
+/** Parent–staff messaging (0018). */
+export const MessageInput = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("start"), studentCode: z.string().trim().min(1).max(80), subject: z.string().trim().min(2).max(120), body: z.string().trim().min(1).max(2000) }).strict(),
+  z.object({ action: z.literal("send"), threadId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).strict(),
+  z.object({ action: z.enum(["read", "close"]), threadId: z.string().uuid() }).strict(),
+]);
