@@ -58,7 +58,10 @@ const CASES = [
   ["parent", "/360/parent", "Your child led the debugging today."],
   ["staff", "/360/staff", "Lesson log & parent reports"],
   ["parent", "/360/parent", "Public and marketing use"],
-  ["parent", "/360/parent", "Ask about renewal"],                         // 1 session left → renewal reminder                  // consent choices (0013)
+  ["parent", "/360/parent", "Ask about renewal"],
+  ["ceo", "/360/hr", "People & access"],
+  ["mgr", "/360/hr", NO_ACCESS],
+  ["staff", "/360/staff", "My pay"],                         // 1 session left → renewal reminder                  // consent choices (0013)
   ["parent", "/360/parent", "Separate consent"],
   ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "AI drafting is switched off until the CEO has verified"],
 ];
@@ -67,7 +70,7 @@ const MUST_NOT = [
   ["mgr", "/360/students", "Test Child 3"],      // branch-B child hidden from branch-A manager
   ["mgr", "/360/crm", "Lead Three"],             // branch-B lead hidden
   ["mgr", "/360/classes", "VEX IQ Team"],        // other-branch class name hidden even in conflicts
-  ["staff", "/360/staff", "LAK"],                // no money shown to staff
+  ["staff", "/360/staff", "LAK"],                // no amounts printed: pay is hidden until the person taps "Show"
   ["parent", "/360/parent", "Lead One"],
   ["mgr", "/360/staff", "My classes today"],
   ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "Assign substitute"],   // teachers cannot assign substitutes

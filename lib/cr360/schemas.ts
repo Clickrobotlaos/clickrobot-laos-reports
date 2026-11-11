@@ -228,3 +228,9 @@ export const MessageInput = z.discriminatedUnion("action", [
   z.object({ action: z.literal("send"), threadId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).strict(),
   z.object({ action: z.enum(["read", "close"]), threadId: z.string().uuid() }).strict(),
 ]);
+
+/** CEO HR administration (0002 payroll grants, 0012 employment lifecycle). The database re-checks CEO. */
+export const HrAdminInput = z.discriminatedUnion("action", [
+  z.object({ action: z.enum(["grant_payroll", "revoke_payroll", "suspend", "reinstate"]), userId: z.string().uuid(), reason: z.string().trim().min(3).max(300) }).strict(),
+  z.object({ action: z.literal("offboard"), userId: z.string().uuid(), effectiveDate: isoDay, reason: z.string().trim().min(3).max(300) }).strict(),
+]);

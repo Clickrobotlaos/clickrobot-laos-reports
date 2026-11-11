@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Reveal } from "@/components/cr360/HrAdmin";
 import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { canUseWorkspace } from "@/lib/cr360/access";
@@ -34,6 +35,14 @@ export default async function StaffOsPage() {
     sb.from("cr360_hr_correction_requests").select("id,work_date,correction_type,status,created_at").eq("employee_id", emp.id).order("created_at", { ascending: false }).limit(10),
     sb.from("cr360_hr_sites").select("enabled,approved_at").eq("branch_id", emp.branch_id).maybeSingle(),
   ]);
+
+  // My pay (decision B, 0002): own record via cr360_staff_confidential; own payslips via RLS.
+  const uid0 = ctx.viewer!.userId;
+  const conf = await sb.rpc("cr360_staff_confidential", { p_user: uid0 });
+  const mine = (conf.error ? null : ((conf.data ?? []) as { base_salary: number | null; salary_currency: string | null; contract_start: string | null; contract_end: string | null; contract_type: string | null }[])[0] ?? null);
+  const { data: slips } = await sb.from("salary_payroll").select("id,month,net,currency,status,pay_date,slip_no").eq("user_id", uid0).order("month", { ascending: false }).limit(12);
+  const payslips = (slips ?? []) as { id: string; month: string; net: number; currency: string; status: string | null; pay_date: string | null; slip_no: string | null }[];
+  const fmtMoney = (n: number | null, c: string | null) => n === null ? "—" : `${Number(n).toLocaleString(ctx.locale === "lo" ? "lo-LA" : "en-US")} ${c ?? ""}`;
 
   // Announcements for staff (0017; RLS: published, current, own branch or all). Missing table → none.
   const { data: staffAnn } = await sb.from("cr360_announcements").select("id,title_en,title_lo,body_en,body_lo,show_from")
@@ -84,7 +93,25 @@ export default async function StaffOsPage() {
         <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/messages" style={{ minHeight: 40 }}>💬 {t.parentMessages}{msgUnread > 0 ? ` · ${msgUnread} ${t.unreadCount}` : ""}</a></p>
       )}
       <p className="cr-sub">{emp.display_name} · {emp.position}</p>
-      <div className="cr-banner info">{t.moneyHidden}</div>
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="pay-h">
+        <h2 id="pay-h">💰 {t.myPay}</h2>
+        {conf.error ? <p className="cr-muted">{t.myPayNotEnabled}</p> : (
+          <>
+            <p className="cr-muted">{t.myPayNote}</p>
+            <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 14px", margin: "8px 0", alignItems: "center" }}>
+              <dt className="cr-muted">{t.salaryLbl}</dt><dd style={{ margin: 0 }}><Reveal value={fmtMoney(mine?.base_salary ?? null, mine?.salary_currency ?? null)} label={t.showLbl} /></dd>
+              <dt className="cr-muted">{t.contractLbl}</dt><dd style={{ margin: 0 }}>{[mine?.contract_type, mine?.contract_start && `${mine.contract_start} → ${mine?.contract_end ?? ""}`].filter(Boolean).join(" · ") || "—"}</dd>
+            </dl>
+            <h3 style={{ margin: "10px 0 6px" }}>{t.payslips}</h3>
+            {payslips.length === 0 ? <p className="cr-muted">{t.noPayslips}</p> : (
+              <ul className="cr-list">{payslips.map((p) => (
+                <li key={p.id}><span><b>{p.month}</b>{p.slip_no ? <span className="cr-muted"> · {p.slip_no}</span> : null}<br /><span className="cr-muted">{p.status ?? ""}{p.pay_date ? ` · ${p.pay_date}` : ""}</span></span>
+                  <Reveal value={fmtMoney(p.net, p.currency)} label={t.showLbl} /></li>
+              ))}</ul>
+            )}
+          </>
+        )}
+      </section>
       {staffAnnouncements.length > 0 && (
         <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="sann-h">
           <h2 id="sann-h">📣 {t.announcements}</h2>
