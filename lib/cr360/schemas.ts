@@ -168,3 +168,11 @@ export const SubstituteInput = z.discriminatedUnion("action", [
 ]).superRefine((v, ctx) => {
   if (v.action === "assign" && v.endsOn < v.startsOn) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "end before start", path: ["endsOn"] });
 });
+
+/** Guardian changes an OPTIONAL consent for one verified child (0013). Required consent is not toggled here. */
+export const CONSENT_PURPOSES = ["portal_media", "ai_reports", "notifications", "public_marketing"] as const;
+export const GuardianConsentInput = z.object({
+  studentCode: z.string().trim().min(1).max(80),
+  purpose: z.enum(CONSENT_PURPOSES),
+  granted: z.boolean(),
+}).strict();

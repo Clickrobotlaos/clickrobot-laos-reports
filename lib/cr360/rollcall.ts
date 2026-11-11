@@ -11,7 +11,7 @@ import type { LegacyBooking, LegacyClass } from "./timetable";
 
 export type MarkStatus = "Present" | "Absent";
 
-export interface RosterPackage { id: string; student_name: string; sessions_total: number | null; sessions_used: number | null; active: boolean | null }
+export interface RosterPackage { id: string; student_name: string; sessions_total: number | null; sessions_used: number | null; active: boolean | null; student_id?: string | null; parent_name?: string | null }
 export interface TodayAttendance { id: string; package_id: string; class_id: string | null; status: string; date: string }
 
 export interface RosterEntry {

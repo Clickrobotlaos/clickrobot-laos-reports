@@ -2,17 +2,33 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
-import { containsAnyName, mapDrafts, SCORE_LABELS, SKILL_LABELS, type Draft, type DraftRequest } from "./reports";
+import { containsAnyName, containsPII, mapDrafts, SCORE_LABELS, SKILL_LABELS, type Draft, type DraftRequest } from "./reports";
 
 /**
  * AI-drafted parent reports (Claude via the official SDK).
  *  - Input is DE-IDENTIFIED (see lib/cr360/reports.ts); this module refuses to send if any known
  *    child name is still present (defence in depth).
  *  - Output is a draft only. Nothing is saved, approved or sent to parents here.
- *  - Requires ANTHROPIC_API_KEY in SERVER env (never NEXT_PUBLIC_). Without it, callers fall back to
- *    the deterministic template.
+ *  - OFF by default. Owner instruction (2026-11-11): AI drafting stays disabled until the provider key,
+ *    privacy protections and a real API call have been verified. It runs only when ALL of these are set
+ *    in the SERVER environment (never NEXT_PUBLIC_):
+ *      CR360_AI_DRAFTS_ENABLED=true   explicit switch, flipped by the owner after verification
+ *      CR360_AI_MODEL=<model id>      configurable; no model identifier is hard-coded here
+ *      ANTHROPIC_API_KEY=<key>        server-only
+ *    Optional: CR360_AI_SERVER_FALLBACK=default enables the API's server-side refusal fallback (beta).
+ *    Otherwise teachers use the deterministic template.
  */
-export const AI_MODEL = "claude-opus-5-5";
+const MODEL_ID = /^[a-z0-9][a-z0-9.:@-]{2,99}$/i;
+
+export type AiStatus = { ready: true; model: string; serverFallback: boolean } | { ready: false; reason: "disabled" | "no_model" | "no_key" };
+
+export function aiStatus(env: Record<string, string | undefined> = process.env): AiStatus {
+  if (env.CR360_AI_DRAFTS_ENABLED?.trim() !== "true") return { ready: false, reason: "disabled" };
+  const model = env.CR360_AI_MODEL?.trim() ?? "";
+  if (!MODEL_ID.test(model)) return { ready: false, reason: "no_model" };
+  if (!env.ANTHROPIC_API_KEY?.trim()) return { ready: false, reason: "no_key" };
+  return { ready: true, model, serverFallback: env.CR360_AI_SERVER_FALLBACK?.trim() === "default" };
+}
 
 const ReportsSchema = z.object({
   reports: z.array(z.object({
@@ -38,7 +54,7 @@ Return one entry per student reference, using the reference exactly as given.`;
 export type AiResult = { ok: true; drafts: Record<string, Draft> } | { ok: false; code: "ai_not_configured" | "ai_declined" | "ai_busy" | "ai_failed" | "privacy_block" };
 
 export function aiConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY?.trim();
+  return aiStatus().ready;
 }
 
 function renderPayload(req: DraftRequest): string {
@@ -54,23 +70,25 @@ function renderPayload(req: DraftRequest): string {
   return `<lesson>\n${lesson}\n</lesson>\n\n${students}`;
 }
 
-export async function draftReportsWithAI(req: DraftRequest, knownNames: string[], injected?: Anthropic): Promise<AiResult> {
-  if (!injected && !aiConfigured()) return { ok: false, code: "ai_not_configured" };
+export async function draftReportsWithAI(
+  req: DraftRequest, knownNames: string[], injected?: Anthropic, status: AiStatus = aiStatus(),
+): Promise<AiResult> {
+  if (!status.ready) return { ok: false, code: "ai_not_configured" };
   const payload = renderPayload(req);
-  if (containsAnyName(payload, knownNames)) return { ok: false, code: "privacy_block" };
+  // Defence in depth: refuse to send if a known name or any contact/ID-like detail survived scrubbing.
+  if (containsAnyName(payload, knownNames) || containsPII(payload)) return { ok: false, code: "privacy_block" };
 
   const client = injected ?? new Anthropic({ timeout: 90_000, maxRetries: 2 });
   try {
     // .create() (not .parse()): a refusal returns no JSON, and .parse() would throw before we could
     // read stop_reason. We check stop_reason first, then validate the JSON with the same schema.
     const response = await client.beta.messages.create({
-      model: AI_MODEL,
+      model: status.model,
       max_tokens: 16000,
       // Short drafting task: low effort keeps teachers waiting seconds, not minutes.
       output_config: { effort: "low", format: betaZodOutputFormat(ReportsSchema) },
-      // If the model declines, the API retries on its fallback model inside the same call.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // Optional: if the model declines, the API retries on its fallback model inside the same call.
+      ...(status.serverFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
       system: SYSTEM,
       messages: [{ role: "user", content: payload }],
     });

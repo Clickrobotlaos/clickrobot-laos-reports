@@ -98,6 +98,10 @@ const DB = {
 
 const RPC = {
   staff_directory: () => DB.users,
+  cr360_guardian_my_consents: (uid) => uid === U.parent ? [
+    { student_code: "TST-001", purpose: "data_processing", granted: true, consent_version: "consent-test-v1", recorded_at: iso(-30), method: "in_person" },
+    { student_code: "TST-001", purpose: "ai_reports", granted: true, consent_version: "consent-test-v1", recorded_at: iso(-2), method: "portal" },
+  ] : [],
   cr360_guardian_children: (uid) => uid === U.parent ? [
     { student_code: "TST-001", student_name: "Test Child 1", package_id: pk(1).id, program_name: "TEST Spike Prime", branch_name: "TEST Branch A", package: "8 sessions", sessions_total: 8, sessions_used: 7, active: true, start_date: "2026-10-01" },
     { student_code: "TST-002", student_name: "Test Child 2", package_id: pk(2).id, program_name: "TEST Spike Prime", branch_name: "TEST Branch A", package: "12 sessions", sessions_total: 12, sessions_used: 3, active: true, start_date: "2026-10-01" },

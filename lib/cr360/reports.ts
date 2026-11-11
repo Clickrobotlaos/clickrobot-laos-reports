@@ -44,6 +44,30 @@ export function scrubNames(text: string | null, names: string[]): string | null 
 }
 
 /**
+ * Contact and identity details that must never reach an external AI service, whoever they belong to:
+ * e-mail addresses, web links, phone numbers, ID / account / student codes and calendar dates
+ * (a date in a note may be a birthday). Applied to EVERY free-text field after name removal.
+ */
+const PII_PATTERNS: [RegExp, string][] = [
+  [/[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/gu, "[email]"],
+  [/\b(?:https?:\/\/|www\.)\S+/giu, "[link]"],
+  [/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\b/gu, "[date]"],
+  [/(?:\+?\d[\d\s().-]{6,}\d)/gu, "[number]"],
+  [/\b[A-Z]{2,5}[-_ ]?\d{2,}\b/gu, "[code]"],
+  [/\b\d{5,}\b/gu, "[number]"],
+];
+export function scrubPII(text: string | null): string | null {
+  if (!text) return text;
+  let out = text;
+  for (const [re, rep] of PII_PATTERNS) out = out.replace(re, rep);
+  return out;
+}
+/** True if any contact/ID-like detail is present (pre-send check). */
+export function containsPII(text: string): boolean {
+  return PII_PATTERNS.some(([re]) => new RegExp(re.source, re.flags.replace("g", "")).test(text));
+}
+
+/**
  * Latin-script names match whole words only ("An" must not hit "and"). Lao is written without spaces
  * between words, so Lao names match as substrings — erring towards removing too much, never too little.
  */
@@ -70,14 +94,19 @@ export interface DraftRequest {
 export function buildDraftRequest(lesson: LessonInfo, students: StudentInput[], otherNames: string[] = []): DraftRequest {
   const allNames = [...students.map((s) => s.name), ...otherNames];
   const refs: Record<string, string> = {};
-  const scrub = (t: string | null) => scrubNames(t, allNames);
+  // Contact / ID details first (an e-mail like "kham@…" must go whole), then names (children,
+  // classmates, guardians). Applied to every free-text field, titles included.
+  const scrub = (t: string | null) => scrubNames(scrubPII(t), allNames);
   const out = students.map((s, i) => {
     const ref = `S${i + 1}`;
     refs[ref] = s.packageId;
     return { ref, attendance: s.attendance, rubric: s.rubric, teacher_note: scrub(s.teacherNote) };
   });
   return {
-    lesson: { ...lesson, covered: scrub(lesson.covered), next_plan: scrub(lesson.next_plan) },
+    lesson: {
+      unit: scrub(lesson.unit), lesson_title: scrub(lesson.lesson_title) ?? "", level: scrub(lesson.level),
+      covered: scrub(lesson.covered), next_plan: scrub(lesson.next_plan),
+    },
     students: out,
     refs,
   };

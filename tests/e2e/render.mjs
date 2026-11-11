@@ -57,6 +57,9 @@ const CASES = [
   ["parent", "/360/lessons/40000000-0000-4000-8000-000000000001", NO_ACCESS],
   ["parent", "/360/parent", "Your child led the debugging today."],
   ["staff", "/360/staff", "Lesson log & parent reports"],
+  ["parent", "/360/parent", "Public and marketing use"],                  // consent choices (0013)
+  ["parent", "/360/parent", "Separate consent"],
+  ["staff", "/360/lessons/40000000-0000-4000-8000-000000000001", "AI drafting is switched off until the CEO has verified"],
 ];
 // Negative content checks: text that must NOT appear for a persona/page.
 const MUST_NOT = [

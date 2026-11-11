@@ -3,6 +3,7 @@ import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { businessDate, dict } from "@/lib/cr360/i18n";
 import { classAccess } from "@/lib/cr360/lesson-access";
+import { aiStatus } from "@/lib/cr360/ai-reports";
 import { loadRollCallData } from "@/lib/cr360/legacy-rollcall";
 import { roster } from "@/lib/cr360/rollcall";
 import { isValidRubric, type Rubric } from "@/lib/cr360/reports";
@@ -114,7 +115,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
 
       {canWrite && enabled ? (
         <LessonWorkspace
-          classId={cls.id} date={date} logId={todayLog?.id ?? null} t={t} students={students}
+          classId={cls.id} date={date} logId={todayLog?.id ?? null} t={t} students={students} aiReady={aiStatus().ready}
           lesson={{
             // Last lesson's "plan for next class" is usually today's lesson: pre-fill it for the teacher to confirm.
             unit: todayLog?.unit ?? previous[0]?.unit ?? "", lessonTitle: todayLog?.lesson_title ?? (previous[0]?.next_plan ?? "").slice(0, 200),

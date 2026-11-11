@@ -123,3 +123,14 @@
 .cr-week h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--c-ink2); margin: 0 0 6px; }
 .cr-slot { border: 1px solid var(--c-line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; background: var(--c-surface); font-size: 13px; }
 .cr-slot b { display: block; font-size: 13.5px; }
+
+/* Parent privacy choices (mobile-first, large touch targets) */
+.cr-consent-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.cr-consent { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--c-surface2); }
+.cr-consent.required { margin-top: 10px; }
+.cr-consent.separate { outline: 2px dashed var(--c-warn); outline-offset: -2px; }
+.cr-consent-icon { font-size: 22px; width: 32px; text-align: center; flex: none; }
+.cr-switch { flex: none; min-width: 72px; min-height: 44px; border-radius: 999px; border: 2px solid currentColor; background: transparent; color: inherit; font-weight: 600; cursor: pointer; }
+.cr-switch.on { background: var(--c-teal); border-color: var(--c-teal); color: #fff; }
+.cr-switch:disabled { opacity: .6; cursor: wait; }
+.cr-switch:focus-visible { outline: 3px solid var(--c-primary); outline-offset: 2px; }

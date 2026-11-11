@@ -5,6 +5,7 @@ import { dict } from "@/lib/cr360/i18n";
 import { groupChildren } from "@/lib/cr360/parent";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { ParentRequests, type ParentRequestRow } from "@/components/cr360/ParentRequests";
+import { ConsentChoices, type ConsentPurpose } from "@/components/cr360/ConsentChoices";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,15 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   // Approved class reports only (0010); missing function → section hidden.
   const repRes = await sb.rpc("cr360_guardian_reports", { p_student_code: current.code });
   const reports = (repRes.error ? null : (repRes.data ?? [])) as { lesson_date: string; class_name: string; unit: string | null; lesson_title: string; level: string | null; report_en: string | null; report_lo: string | null }[] | null;
+
+  // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
+  const conRes = await sb.rpc("cr360_guardian_my_consents");
+  const consentsEnabled = !conRes.error;
+  const mine = ((conRes.data ?? []) as { student_code: string; purpose: string; granted: boolean; consent_version: string | null; recorded_at: string | null }[])
+    .filter((r) => r.student_code === current.code);
+  const reqRow = mine.find((r) => r.purpose === "data_processing");
+  const consentState: Partial<Record<ConsentPurpose, boolean>> = {};
+  for (const r of mine) if (r.purpose !== "data_processing") consentState[r.purpose as ConsentPurpose] = r.granted;
 
   return (
     <>
@@ -90,6 +100,12 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
       <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="rq-h">
         <h2 id="rq-h">{t.myRequests}</h2>
         <ParentRequests studentCode={current.code} rows={(reqRes.data ?? []) as ParentRequestRow[]} enabled={requestsEnabled} t={t} />
+      </section>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="pc-h">
+        <h2 id="pc-h">{t.privacyChoices}</h2>
+        <ConsentChoices studentCode={current.code} state={consentState} enabled={consentsEnabled} t={t}
+          required={reqRow ? { version: reqRow.consent_version, at: reqRow.recorded_at } : null} />
       </section>
 
       <section className="cr-card" style={{ marginTop: 14 }}>

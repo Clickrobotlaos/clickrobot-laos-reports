@@ -13,8 +13,10 @@ export interface StudentRow {
 }
 
 /** Teacher workspace: lesson log + per-student follow-up + AI/template drafted parent reports. */
-export function LessonWorkspace({ classId, date, logId: initialLogId, lesson: initialLesson, students: initialStudents, t }: {
+export function LessonWorkspace({ classId, date, logId: initialLogId, lesson: initialLesson, students: initialStudents, t, aiReady = false }: {
   classId: string; date: string; logId: string | null; lesson: LessonFields; students: StudentRow[]; t: Dict;
+  /** Server-decided: AI switched on by the owner, model + key configured. Consent is checked per child. */
+  aiReady?: boolean;
 }) {
   const router = useRouter();
   const [logId, setLogId] = useState(initialLogId);
@@ -57,6 +59,8 @@ export function LessonWorkspace({ classId, date, logId: initialLogId, lesson: in
     });
     setBusy(null);
     if (!ok) { setMsg({ tone: "warn", text: errText(j.reasonCode) }); return; }
+    const skipped = (j.skipped ?? []) as string[];
+    if (skipped.length) setMsg({ tone: "warn", text: `${t.aiSkippedNoConsent} ${rows.filter((r) => skipped.includes(r.packageId)).map((r) => r.name).join(", ")}` });
     const drafts = (j.drafts ?? {}) as Record<string, { en: string; lo: string }>;
     setRows((rs) => rs.map((r) => (drafts[r.packageId]
       ? { ...r, reportEn: drafts[r.packageId].en, reportLo: drafts[r.packageId].lo, source: j.source, status: r.status === "approved" ? "draft" : r.status }
@@ -119,8 +123,9 @@ export function LessonWorkspace({ classId, date, logId: initialLogId, lesson: in
       <section className="cr-card" aria-labelledby="sf-h">
         <h2 id="sf-h">{t.studentsFollowUp}</h2>
         <p className="cr-muted">{t.aiNote}</p>
+        {!aiReady && <p className="cr-banner info" style={{ margin: "6px 0" }}>{t.aiOff}</p>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          <button type="button" className="cr-btn teal" disabled={busy !== null || rows.length === 0} onClick={() => draft("ai")}>{busy === "ai" ? t.aiDrafting : t.draftAllAI}</button>
+          <button type="button" className="cr-btn teal" disabled={!aiReady || busy !== null || rows.length === 0} onClick={() => draft("ai")}>{busy === "ai" ? t.aiDrafting : t.draftAllAI}</button>
           <button type="button" className="cr-btn ghost" disabled={busy !== null || rows.length === 0} onClick={() => draft("template")}>{t.useTemplate}</button>
         </div>
         <div aria-live="polite">{msg && <div className={`cr-banner ${msg.tone}`}>{msg.text}</div>}</div>
