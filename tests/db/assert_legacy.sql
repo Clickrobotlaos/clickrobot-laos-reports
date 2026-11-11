@@ -214,3 +214,18 @@ set local role anon; select t.claims(null);
 select t.ok((select count(*) from public.branches) = 0, 'anon branch read returns empty (no error) — invoice share page');
 select t.ok((select count(*) from public.settings) = 0, 'anon settings read returns empty (no error)');
 rollback;
+
+-- ---------------------------------------------------------------- P2-11 duplicate income per invoice (legacy 3-call payment)
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
+insert into public.income_records (date, branch_id, amount, currency, rate_to_lak, amount_lak, invoice_id, received_by, created_by)
+values (current_date, '10000000-0000-0000-0000-00000000000a', 100, 'LAK', 1, 100, '50000000-0000-0000-0000-000000000001', auth.uid(), auth.uid());
+do $$ declare blocked boolean; begin
+  begin
+    insert into public.income_records (date, branch_id, amount, currency, rate_to_lak, amount_lak, invoice_id, received_by, created_by)
+    values (current_date, '10000000-0000-0000-0000-00000000000a', 100, 'LAK', 1, 100, '50000000-0000-0000-0000-000000000001', auth.uid(), auth.uid());
+    blocked := false;
+  exception when unique_violation then blocked := true; end;
+  perform t.sec(blocked, 'P2-11 a second income row for the same invoice (double click) is rejected');
+end $$;
+rollback;

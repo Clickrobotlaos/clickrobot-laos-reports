@@ -66,8 +66,8 @@ const DB = {
     { id: "80000000-0000-4000-8000-000000000004", student_name: "Lead Four", parent_name: "Parent Four", phone: "020 0000 0004", age: 6, branch_id: A, program_id: PROG, source: "Phone", status: "Registered", lost_reason: null, trial_date: null, last_contact_at: iso(-5), created_at: iso(-40) },
   ],
   invoices: [
-    { id: "i1", branch_id: A, status: "Sent", amount_lak: 1500000, due_date: "2026-11-01", date: "2026-10-25" },
-    { id: "i2", branch_id: B, status: "Draft", amount_lak: 900000, due_date: "2026-12-15", date: today },
+    { id: "52000000-0000-4000-8000-000000000001", invoice_no: "TEST-INV-001", student_name: "Test Child 1", amount: 1500000, currency: "LAK", branch_id: A, status: "Sent", amount_lak: 1500000, due_date: "2026-11-01", date: "2026-10-25" },
+    { id: "52000000-0000-4000-8000-000000000002", invoice_no: "TEST-INV-002", student_name: "Test Child 3", amount: 41, currency: "USD", branch_id: B, status: "Draft", amount_lak: 900000, due_date: "2026-12-15", date: today },
   ],
   income_records: [
     { id: "r1", date: `${today.slice(0, 7)}-02`, branch_id: A, amount: 2400000, currency: "LAK", rate_to_lak: 1, amount_lak: 2400000, unpaid_lak: 0, payment_method: "Cash" },

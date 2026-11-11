@@ -35,6 +35,20 @@ export function InvoiceView({ invoice, onBack, onChanged }: {
   async function markPaid() {
     setBusy(true); setErr("");
 
+    // 0. Preferred: one atomic, idempotent database call (proposed migration 0007). It performs the
+    //    same three steps below in a single transaction, so a double click or a failed step can never
+    //    leave duplicate income or a half-paid invoice. Until 0007 is applied the function does not
+    //    exist (PGRST202) and we fall through to the original three-step path unchanged.
+    const atomic = await supabase.rpc("cr360_mark_invoice_paid", { p_invoice: invoice.id, p_method: payMethod });
+    if (!atomic.error) {
+      const { data: fresh } = await supabase.from("invoices").select("*").eq("id", invoice.id).single();
+      setBusy(false);
+      if (fresh) onChanged(fresh);
+      setShowPay(false);
+      return;
+    }
+    if (atomic.error.code !== "PGRST202") { setErr(atomic.error.message); setBusy(false); return; }
+
     // 1. Insert income record — linked to invoice both ways
     const { data: inc, error: incErr } = await supabase.from("income_records").insert({
       date: todayStr(), receipt_no: invoice.invoice_no,

@@ -77,3 +77,8 @@ export const LeadActionInput = z.object({
   expectedStatus: z.enum(["New", "Contacted", "TrialBooked", "TrialAttended", "Registered", "Lost"]),
   reason: z.string().trim().max(300).optional(),
 }).strict();
+
+export const MarkPaidInput = z.object({
+  invoiceId: z.string().uuid(),
+  method: z.enum(["Cash", "Bank Transfer", "QR Payment", "Other"]),
+}).strict();

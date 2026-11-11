@@ -2,10 +2,11 @@ import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { canUseWorkspace } from "@/lib/cr360/access";
 import { businessDate, dict } from "@/lib/cr360/i18n";
-import { kip, monthBounds, summarise, type ExpenseRow, type IncomeRow, type InvoiceRow } from "@/lib/cr360/finance";
+import { kip, monthBounds, summarise, toCents, type ExpenseRow, type IncomeRow, type InvoiceRow } from "@/lib/cr360/finance";
 import { loadNames } from "@/lib/cr360/legacy-students";
 import { Unauthorized, Planned } from "@/components/cr360/Blocks";
 import { fetchAllPages } from "@/lib/cr360/paging";
+import { MarkPaid } from "@/components/cr360/MarkPaid";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const [inc, exp, inv, closed, names] = await Promise.all([
     fetchAllPages<IncomeRow>((f, t2) => sb.from("income_records").select("id,date,branch_id,amount,currency,rate_to_lak,amount_lak,unpaid_lak,payment_method").gte("date", bounds.start).lt("date", bounds.end).order("id").range(f, t2) as unknown as R<IncomeRow>),
     fetchAllPages<ExpenseRow>((f, t2) => sb.from("expense_records").select("id,date,branch_id,category,amount,currency,rate_to_lak,amount_lak").gte("date", bounds.start).lt("date", bounds.end).order("id").range(f, t2) as unknown as R<ExpenseRow>),
-    fetchAllPages<InvoiceRow>((f, t2) => sb.from("invoices").select("id,branch_id,status,amount_lak,due_date,date").in("status", ["Draft", "Sent"]).order("id").range(f, t2) as unknown as R<InvoiceRow>),
+    fetchAllPages<InvoiceRow>((f, t2) => sb.from("invoices").select("id,branch_id,status,amount_lak,due_date,date,invoice_no,student_name,amount,currency").in("status", ["Draft", "Sent"]).order("id").range(f, t2) as unknown as R<InvoiceRow>),
     sb.from("closed_months").select("month").eq("month", month).maybeSingle(),
     loadNames(sb),
   ]);
@@ -112,9 +113,32 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </section>
       </div>
 
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="oi-h">
+        <h2 id="oi-h">{t.openInvoiceList} ({inv.rows.length})</h2>
+        <p className="cr-muted">{t.paymentNote}</p>
+        {inv.rows.length === 0 ? <p className="cr-muted">—</p> : (
+          <div className="cr-tablewrap"><table className="cr-table">
+            <thead><tr><th scope="col">{t.invoiceNo}</th><th scope="col">{t.colStudent}</th><th scope="col">{t.colBranch}</th><th scope="col">{t.total}</th><th scope="col">{t.due}</th><th scope="col"><span className="cr-sr">{t.recordPayment}</span></th></tr></thead>
+            <tbody>{[...inv.rows].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999")).slice(0, 100).map((i) => {
+              const late = !!i.due_date && i.due_date < today;
+              return (
+                <tr key={i.id}>
+                  <td>{i.invoice_no ?? "—"} <span className="cr-badge">{i.status}</span></td>
+                  <td>{i.student_name ?? "—"}</td>
+                  <td>{bname(i.branch_id ?? "unassigned")}</td>
+                  <td>{fmt(toCents(i.amount_lak))}{i.currency && i.currency !== "LAK" ? <span className="cr-muted"> ({Number(i.amount ?? 0).toLocaleString("en-US")} {i.currency})</span> : null}</td>
+                  <td>{i.due_date ?? "—"} {late && <span className="cr-badge rejected">{t.overdue}</span>}</td>
+                  <td><MarkPaid invoiceId={i.id} label={i.invoice_no ?? ""} t={t} /></td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div>
+        )}
+      </section>
+
       <div className="cr-grid c2" style={{ marginTop: 14 }}>
-        <Planned t={t} title="Reconciled ledger: invoices → payments → package credits" phase="Phase 1b"
-          blockers={["Migration (not yet drafted): payments + allocations in minor units with rate snapshots, idempotent provider events"]} />
+        <Planned t={t} title="Partial payments, refunds & bank reconciliation" phase="Phase 4"
+          blockers={["Full-payment recording is atomic with 0007; partial payments, refunds and statement matching need a payments-allocation ledger (not yet drafted)"]} />
         <Planned t={t} title="Daily cashbook, close & executive finance" phase="Phase 4"
           blockers={["Branch-scoped finance grants", "Executive finance isolated (CEO / explicit partner grants only)"]} />
       </div>

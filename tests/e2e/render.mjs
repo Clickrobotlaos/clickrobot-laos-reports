@@ -23,6 +23,7 @@ const CASES = [
   ["ceo", "/360/classes", "Teacher double-booked"],
   ["ceo", "/360/crm", "Lead One"],
   ["ceo", "/360/finance", "NOT a reconciled ledger"],
+  ["ceo", "/360/finance", "TEST-INV-001"],
   ["ceo", "/360/schools", "School partners"],
   ["ceo", "/360/parent", NO_ACCESS],
   ["mgr", "/360/manager", "TEST Teacher A"],

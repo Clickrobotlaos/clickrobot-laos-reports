@@ -26,6 +26,8 @@ const cases = [
   ]),
   ["POST crm lead-action cross-site → 403", async () => (await fetch(`${B}/api/cr360/crm/lead-action`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
   ["POST crm lead-action anon → 401", async () => (await fetch(`${B}/api/cr360/crm/lead-action`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
+  ["POST finance mark-paid cross-site → 403", async () => (await fetch(`${B}/api/cr360/finance/mark-paid`, { method: "POST", headers: { ...j, origin: "https://evil.example" }, body: "{}" })).status === 403],
+  ["POST finance mark-paid anon → 401", async () => (await fetch(`${B}/api/cr360/finance/mark-paid`, { method: "POST", headers: { ...j, origin: B }, body: "{}" })).status === 401],
   ["locale rejects unknown value → 400", async () => (await fetch(`${B}/api/cr360/locale`, { method: "POST", headers: { ...j, origin: B }, body: JSON.stringify({ locale: "fr" }) })).status === 400],
   ["legacy /login still served → 200", async () => (await fetch(`${B}/login`)).status === 200],
 ];

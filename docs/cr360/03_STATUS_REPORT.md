@@ -19,8 +19,9 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 0004 | Audited approve/reject for leave/OT/corrections | No approval path exists | Same |
 | 0006 | Legacy data readable only by active staff; terminated staff lose access | First parent account would read everything; ex-staff keep read+write | Same |
 | 0005 | Verified parent ↔ student links | Parent portal | 29 isolation checks |
+| 0007 | Atomic, idempotent "mark invoice paid" + one income row per invoice | A double click records the payment twice; a failed step leaves income on an unpaid invoice | Duplicate reproduced, then closed; 23 payment checks |
 
-`npm run test:db` reproduces every issue and verifies every fix (131 passing assertions per run, 15 of which first reproduce the vulnerabilities on the unfixed schema) on a throwaway local copy of the production schema.
+`npm run test:db` reproduces every issue and verifies every fix (157 passing assertions per run, 16 of which first reproduce the vulnerabilities on the unfixed schema) on a throwaway local copy of the production schema.
 
 ## The 36 modules
 | # | Module | Status | What exists / what's missing |
@@ -51,7 +52,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 24 | Inventory | Not started | |
 | 25 | 2.5D/3D classroom fill | **Live** | Isometric seat map per class from real bookings (regulars + that day's makeups), text alternative |
 | 26 | Daily cashbook | Not started | |
-| 27 | Invoices/payments/refunds | **Partial (live, read-only)** | Open/overdue invoices on finance page. Missing: reconciled payments ledger (not yet drafted) |
+| 27 | Invoices/payments/refunds | **Partial (on approval 0007)** | Open/overdue invoices; "Record payment" (atomic: income + registration + package exactly once) in `/360/finance` and the Records app's Mark paid button. Missing: partial payments, refunds, statement matching |
 | 28 | Expenses/purchasing | **Partial (live, read-only)** | Expenses by category/branch. Missing: purchase requests/POs |
 | 29 | Budgets/approvals | Not started | |
 | 30 | Branch P&L / cash flow | **Partial (live)** | Operational income − expenses by branch and month, labelled not reconciled |
@@ -65,10 +66,10 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 ## Test evidence
 | Suite | Count | Command |
 |---|---|---|
-| Unit (domain rules, access, contracts) | 98 | `npm test` |
-| Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 131 | `npm run test:db` |
-| Auth-boundary smoke against a production build | 28 | `npm run test:smoke` |
-| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 36 | `npm run test:render` |
+| Unit (domain rules, access, contracts) | 99 | `npm test` |
+| Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 157 | `npm run test:db` |
+| Auth-boundary smoke against a production build | 30 | `npm run test:smoke` |
+| Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 37 | `npm run test:render` |
 | Visual review of every rendered page (desktop + phone, light + dark) | screenshots reviewed | — |
 
 ## Not verified (be aware)
@@ -78,7 +79,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 - GPS has never been tested on a real device at a branch.
 
 ## Owner decisions needed
-1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005.
+1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005 and 0007 (before real payments are recorded).
 2. Former staff: inactive/Terminated users lose all legacy access in 0006 — confirm.
 3. Should the finance role keep full access to staff salary records (0002 keeps it)?
 4. Is one class per package per day intended (blocks same-day makeup)?

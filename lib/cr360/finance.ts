@@ -7,7 +7,7 @@
  */
 export interface IncomeRow { id: string; date: string; branch_id: string | null; amount: number | string | null; currency: string | null; rate_to_lak: number | string | null; amount_lak: number | string | null; unpaid_lak?: number | string | null; payment_method: string | null }
 export interface ExpenseRow { id: string; date: string; branch_id: string | null; category: string | null; amount: number | string | null; currency: string | null; rate_to_lak: number | string | null; amount_lak: number | string | null }
-export interface InvoiceRow { id: string; branch_id: string | null; status: string | null; amount_lak: number | string | null; due_date: string | null; date: string | null }
+export interface InvoiceRow { id: string; branch_id: string | null; status: string | null; amount_lak: number | string | null; due_date: string | null; date: string | null; invoice_no?: string | null; student_name?: string | null; amount?: number | string | null; currency?: string | null }
 
 /** numeric → kip-cents (bigint). Rounds half away from zero at the cent. Non-finite → 0n. */
 export function toCents(v: number | string | null | undefined): bigint {

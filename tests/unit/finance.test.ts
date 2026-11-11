@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { kip, monthBounds, rateInconsistent, summarise, toCents } from "@/lib/cr360/finance";
+import { MarkPaidInput } from "@/lib/cr360/schemas";
 
 // FICTIONAL amounts.
 const inc = (o: Record<string, unknown>) => ({ id: Math.random().toString(36), date: "2026-11-05", branch_id: "A", amount: 100000, currency: "LAK", rate_to_lak: 1, amount_lak: 100000, unpaid_lak: 0, payment_method: "Cash", ...o });
@@ -56,5 +57,16 @@ describe("operational summary", () => {
   });
   it("data-quality counters", () => {
     expect(s.dataQuality).toEqual({ incomeRateMismatch: 0, expenseRateMismatch: 1, unassignedBranch: 1 });
+  });
+});
+
+describe("record-payment contract", () => {
+  const invoiceId = "51000000-0000-4000-8000-000000000001";
+  it("accepts only known methods and no client-side amounts/status", () => {
+    expect(MarkPaidInput.safeParse({ invoiceId, method: "Cash" }).success).toBe(true);
+    expect(MarkPaidInput.safeParse({ invoiceId, method: "Crypto" }).success).toBe(false);
+    expect(MarkPaidInput.safeParse({ invoiceId, method: "Cash", amount: 1 }).success).toBe(false);
+    expect(MarkPaidInput.safeParse({ invoiceId, method: "Cash", status: "Paid" }).success).toBe(false);
+    expect(MarkPaidInput.safeParse({ invoiceId: "x", method: "Cash" }).success).toBe(false);
   });
 });
