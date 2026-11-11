@@ -44,7 +44,7 @@ export type CorrectionInput = z.infer<typeof CorrectionInput>;
 export type OtInput = z.infer<typeof OtInput>;
 
 export const DecisionInput = z.object({
-  kind: z.enum(["leave", "ot", "correction"]),
+  kind: z.enum(["leave", "ot", "correction", "guardian"]),
   id: z.string().uuid(),
   action: z.enum(["approve", "reject"]),
   reason: z.string().trim().max(1000).optional(),
@@ -102,3 +102,16 @@ export const MarkAttendanceInput = z.object({
   packageId: z.string().uuid(),
   status: z.enum(["Present", "Absent"]),
 }).strict();
+
+/** Parent request (migration 0009). Ownership comes from the verified link on the server, never the client. */
+export const GuardianRequestInput = z.object({
+  studentCode: z.string().trim().min(1).max(80),
+  kind: z.enum(["absence", "makeup", "extension", "schedule", "other"]),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  message: z.string().trim().min(3).max(1000),
+}).strict()
+  .refine((v) => !["absence", "extension"].includes(v.kind) || !!v.startDate, { message: "start date required", path: ["startDate"] })
+  .refine((v) => !v.startDate || !v.endDate || v.endDate >= v.startDate, { message: "end before start", path: ["endDate"] });
+
+export const GuardianRequestCancelInput = z.object({ id: z.string().uuid() }).strict();

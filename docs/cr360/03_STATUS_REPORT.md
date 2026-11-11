@@ -19,6 +19,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 0004 | Audited approve/reject for leave/OT/corrections | No approval path exists | Same |
 | 0006 | Legacy data readable only by active staff; terminated staff lose access | First parent account would read everything; ex-staff keep read+write | Same |
 | 0005 | Verified parent ↔ student links | Parent portal | 29 isolation checks |
+| 0009 | Parent requests (absence, makeup, extension, schedule) + manager review | Parents have no way to send requests; changes go through chat | 27 checks |
 | 0008 | Shift planner (create/cancel shifts with overlap, no back-dating, audit) | Shifts can only be added in the SQL editor today, so StaffOS schedules and attendance % stay empty | 19 checks |
 | 0007 | Atomic, idempotent "mark invoice paid" + one income row per invoice | A double click records the payment twice; a failed step leaves income on an unpaid invoice | Duplicate reproduced, then closed; 23 payment checks |
 
@@ -35,14 +36,14 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 | 6 | Timetables/classes/rooms | **Partial (live)** | `/360/classes` weekly timetable, teacher/room conflict detection across branches. Class editing stays in Records app |
 | 7 | Attendance & session deductions | **Live** | Teacher roll call ("My classes today" in StaffOS; also on `/360/classes` for managers): today only, assigned classes only, booked students only, no Present without sessions left, idempotent, race-safe. Ledger rebuilt from attendance with counter reconciliation (0/182 mismatches). Double debit blocked by the legacy one-row-per-day constraint (verified) |
 | 8 | Packages, renewals, makeups | **Partial (live)** | Balances, low-balance and overdrawn flags. Missing: renewal/extension/freeze workflows, makeup credits ledger |
-| 9 | Parent portal | **On approval (0005 + 0006)** | `/360/parent`: children, course, branch, sessions left. Missing: invoices, calendar, media, requests |
+| 9 | Parent portal | **On approval (0005 + 0006, 0009)** | `/360/parent`: children, course, branch, sessions left, requests to the centre. Missing: invoices, calendar, media |
 | 10 | Learning progression | Not started | |
 | 11 | Private child media | Not started | Needs private bucket + consent design |
 | 12 | Competitions/teams | Not started | |
 | 13 | CRM trial-to-sale | **Live** | `/360/crm` Kanban, funnel, follow-up SLA flags, safe stage moves with race protection. Trial booking/registration in Records app |
 | 14 | Marketing/referrals | Not started | |
 | 15 | WhatsApp/email | Not started | Needs WhatsApp Business account; will never mark "sent" without provider confirmation |
-| 16 | Service desk (absence/extension) | Not started | |
+| 16 | Service desk (absence/extension) | **On approval (0009)** | Parent requests from `/360/parent`; managers approve/reject in the shared queue on `/360/manager`; approval never changes sessions automatically |
 | 17 | HR employee directory | **Live** | `/360/manager` branch staff, safe columns only |
 | 18 | GPS timekeeping, shifts, leave, OT | **Live (GPS on site approval) + On approval (0004, 0008)** | `/360/staff` check-in/out via deployed RPC with server time; leave/OT/correction requests; manager shift planner (0008) and approvals (0004). GPS refuses until each entrance is verified on site |
 | 19 | Contracts & payroll | Not started | Vault tables exist (v0.4); needs Lao labour-law rules + two-person release |
@@ -67,7 +68,7 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 ## Test evidence
 | Suite | Count | Command |
 |---|---|---|
-| Unit (domain rules, access, contracts) | 117 | `npm test` |
+| Unit (domain rules, access, contracts) | 120 | `npm test` |
 | Database harness (exploit repro, fixes, isolation, idempotency, rollback) | 177 | `npm run test:db` |
 | Auth-boundary smoke against a production build | 36 | `npm run test:smoke` |
 | Rendered pages as 4 personas against a fake Supabase (errors, expected text, leak checks, Lao @ 390 px) | 41 | `npm run test:render` |
@@ -81,10 +82,13 @@ Nothing here is a mock. Pages show real rows or an honest empty/"not enabled" st
 - GPS has never been tested on a real device at a branch.
 
 ## Owner decisions needed
-1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005, 0007 (before real payments are recorded) and 0008 (to start scheduling staff).
+1. Approve 0001 now (urgent), then 0002–0004, 0006 (before any parent account), then 0005, 0007 (before real payments are recorded) 0008 (to start scheduling staff) and 0009 (parent requests, after 0005).
 2. Former staff: inactive/Terminated users lose all legacy access in 0006 — confirm.
 3. Should the finance role keep full access to staff salary records (0002 keeps it)?
 4. Is one class per package per day intended (blocks same-day makeup)?
 5. Consent text for parents (Lao counsel) → set `CR360_GUARDIAN_CONSENT_VERSION`.
 6. Staging Supabase project (may cost money) for end-to-end tests with real auth.
 7. What created the `ceo360` and `clickrobot` schemas?
+
+## Continuous integration
+`.github/workflows/ci.yml` runs on every push and pull request with no secrets and no Supabase access: app checks + production build + boundary smoke, the database harness, and the persona render suite (screenshots kept 7 days as a build artifact). First run: all three jobs green.

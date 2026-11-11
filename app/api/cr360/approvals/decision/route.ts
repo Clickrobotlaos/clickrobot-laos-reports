@@ -6,7 +6,8 @@ import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { jsonError, jsonOk, parseBody, sameOrigin } from "@/lib/cr360/api";
 
 /**
- * POST /api/cr360/approvals/decision — approve/reject a pending leave / OT / correction request.
+ * POST /api/cr360/approvals/decision — approve/reject a pending leave / OT / correction request (0004)
+ * or a parent request (kind "guardian", 0009).
  * The DB function (migration 0004) is the authority: branch scope, no self-approval, single decision,
  * append-only audit. This route only pre-filters obvious non-reviewers and maps errors.
  * Returns 501 not_enabled until 0004 has been approved and applied.
@@ -20,9 +21,12 @@ export async function POST(req: Request) {
   if (!body.ok) return body.res;
 
   const sb = await supabaseServer();
-  const { data, error } = await sb.rpc("cr360_hr_decide_request", {
-    p_kind: body.data.kind, p_id: body.data.id, p_action: body.data.action, p_reason: body.data.reason ?? null,
-  });
+  // Parent requests (0009) and HR requests (0004) share this endpoint; each DB function enforces its own scope.
+  const { data, error } = body.data.kind === "guardian"
+    ? await sb.rpc("cr360_guardian_request_decide", { p_id: body.data.id, p_action: body.data.action, p_note: body.data.reason ?? null })
+    : await sb.rpc("cr360_hr_decide_request", {
+        p_kind: body.data.kind, p_id: body.data.id, p_action: body.data.action, p_reason: body.data.reason ?? null,
+      });
   if (error) {
     const e = decisionErrorCode(error);
     return jsonError(e.status, e.code);

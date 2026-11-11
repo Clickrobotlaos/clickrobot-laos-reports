@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Dict } from "@/lib/cr360/i18n";
 
 /** Approve / reject with a required reason for rejection. The database is the authority. */
-export function DecisionButtons({ kind, id, t }: { kind: "leave" | "ot" | "correction"; id: string; t: Dict }) {
+export function DecisionButtons({ kind, id, t }: { kind: "leave" | "ot" | "correction" | "guardian"; id: string; t: Dict }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);

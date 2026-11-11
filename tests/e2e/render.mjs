@@ -43,6 +43,7 @@ const CASES = [
   ["staff", "/360/crm", NO_ACCESS],
   ["parent", "/360/parent", "Test Child 1"],
   ["parent", "/360/parent?child=TST-002", "Test Child 2"],
+  ["parent", "/360/parent", "Requests are not enabled yet"],   // 0009 not applied in the fake → honest disabled state
   ["parent", "/360/staff", NO_ACCESS],
   ["parent", "/360/students/TST-001", NO_ACCESS],
 ];

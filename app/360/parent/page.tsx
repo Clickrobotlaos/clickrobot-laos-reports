@@ -4,6 +4,8 @@ import { canUseWorkspace } from "@/lib/cr360/access";
 import { dict } from "@/lib/cr360/i18n";
 import { groupChildren } from "@/lib/cr360/parent";
 import { Unauthorized } from "@/components/cr360/Blocks";
+import { ParentRequests, type ParentRequestRow } from "@/components/cr360/ParentRequests";
+import { supabaseServer } from "@/lib/cr360/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,11 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   }
   const wanted = (await searchParams).child;
   const current = children.find((c) => c.code === wanted) ?? children[0];
+  const sb = await supabaseServer();
+  // RLS returns only this guardian's own rows; table missing (0009 not applied) → error → disabled.
+  const reqRes = await sb.from("cr360_guardian_requests").select("id,kind,start_date,end_date,message,status,review_note,created_at")
+    .eq("student_code", current.code).order("created_at", { ascending: false }).limit(20);
+  const requestsEnabled = !reqRes.error;
 
   return (
     <>
@@ -59,6 +66,11 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
         })}
       </div>
       <p className="cr-muted" style={{ marginTop: 12 }}>{t.balanceNote} {t.withdrawConsent}</p>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="rq-h">
+        <h2 id="rq-h">{t.myRequests}</h2>
+        <ParentRequests studentCode={current.code} rows={(reqRes.data ?? []) as ParentRequestRow[]} enabled={requestsEnabled} t={t} />
+      </section>
 
       <section className="cr-card" style={{ marginTop: 14 }}>
         <h2>{t.parentComing}</h2>
