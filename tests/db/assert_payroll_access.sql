@@ -106,5 +106,28 @@ do $$ declare code text; begin
   exception when others then code := sqlstate; end;
   perform t.ok(code = '42501', 'B anon cannot call the grant function');
 end $$;
-select t.ok((select count(*) from public.salary_payroll) = 0, 'B anon reads no payslips');
+do $$ declare n int := 0; begin
+  begin select count(*) into n from public.salary_payroll; exception when insufficient_privilege then n := 0; end;
+  perform t.ok(n = 0, 'B anon reads no payslips');
+end $$;
+rollback;
+
+-- Column privileges (production 2026-11-11) + cr360_staff_confidential (0002)
+begin;
+set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000c0');
+do $$ declare code text; begin
+  begin perform base_salary from public.users limit 1; code := 'none'; exception when others then code := sqlstate; end;
+  perform t.ok(code = '42501', 'B salary columns are not readable directly by any API user (production column grants)');
+end $$;
+select t.ok((select count(*) from public.cr360_staff_confidential()) = 6, 'B CEO reads every staff member''s confidential record through the function');
+select t.claims('00000000-0000-0000-0000-0000000000a2');
+select t.ok((select count(*) from public.cr360_staff_confidential()) = 1 and (select base_salary from public.cr360_staff_confidential()) = 111,
+  'B staff read their own salary and contract details only');
+select t.ok((select count(*) from public.cr360_staff_confidential('00000000-0000-0000-0000-0000000000a3')) = 0, 'B staff cannot read a colleague''s confidential record');
+select t.claims('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select count(*) from public.cr360_staff_confidential()) = 1, 'B co_admin without a grant: own record only');
+select t.claims('00000000-0000-0000-0000-0000000000a1');
+select t.ok((select count(*) from public.cr360_staff_confidential()) = 0, 'B a 360-only manager (no legacy row) gets nothing');
+select t.claims('00000000-0000-0000-0000-0000000000d9');
+select t.ok((select count(*) from public.cr360_staff_confidential()) = 0, 'B former staff get nothing, not even their own record');
 rollback;

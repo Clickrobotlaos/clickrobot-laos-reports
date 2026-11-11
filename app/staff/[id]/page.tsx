@@ -5,6 +5,7 @@ import { useApp } from "@/lib/app-context";
 import { supabase } from "@/lib/supabase";
 import { Shell } from "@/components/shell";
 import { PERMS, ROLE_LABELS, fmt } from "@/lib/util";
+import { loadUsers } from "@/lib/legacy-users";
 
 export default function StaffDetailPage() {
   const app = useApp();
@@ -32,7 +33,7 @@ function StaffDetail() {
     if (!id) return;
     setLoading(true);
     const [s, h] = await Promise.all([
-      supabase.from("users").select("*").eq("id", id).maybeSingle(),
+      loadUsers({ id }).then((r) => ({ data: r.data[0] ?? null })),
       supabase.from("salary_payroll").select("*").order("month", { ascending: false }),
     ]);
     setStaff(s.data);

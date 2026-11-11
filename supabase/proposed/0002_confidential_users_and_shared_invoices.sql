@@ -126,8 +126,24 @@ grant execute on function public.cr360_payroll_grants() to authenticated;
 
 -- ---- P0-3: public.users rows ---------------------------------------------------------
 drop policy if exists p_users_read on public.users;
-create policy p_users_read on public.users for select
-  using (id = auth.uid() or (select cr360_authz.can_read_confidential_hr()));
+create policy p_users_read on public.users for select to authenticated
+  using (id = (select auth.uid()) or (select cr360_authz.can_read_confidential_hr()));
+
+-- Production 2026-11-11 (staffos_phase3_legacy_personnel_privacy_guard) already limits column access:
+-- authenticated may SELECT only directory columns of public.users, so NOBODY (not even the CEO) can read
+-- salary / bank / ID columns through the API. Decision B still needs CEO, payroll grant holders and the
+-- person themselves to read them: this function is that single, audited-by-design path.
+create or replace function public.cr360_staff_confidential(p_user uuid default null)
+returns setof public.users     -- the full record (pay, bank, ID, contact, contract) for permitted rows only
+language sql stable security definer set search_path = '' as $$
+  select u.* from public.users u
+   where (p_user is null or u.id = p_user)
+     and public.my_role() is not null
+     and (u.id = (select auth.uid()) or cr360_authz.can_read_confidential_hr())
+   order by u.name
+$$;
+revoke all on function public.cr360_staff_confidential(uuid) from public, anon;
+grant execute on function public.cr360_staff_confidential(uuid) to authenticated;
 
 -- co_admin keeps creating/editing staff records but only for rows it may read
 -- (UPDATE needs the row to be visible); pay fields are guarded by the trigger below.

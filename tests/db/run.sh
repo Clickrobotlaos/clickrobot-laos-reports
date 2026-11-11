@@ -32,7 +32,7 @@ FWD=("$P/0001_p0_hotfix_reset_and_role_escalation.sql" "$P/0002_confidential_use
 RBK=("$P/0013_guardian_consents.rollback.sql" "$P/0012_employment_lifecycle.rollback.sql" "$P/0011_attendance_per_class.rollback.sql" "$P/0010_lesson_logs_and_parent_reports.rollback.sql" "$P/0009_guardian_requests.rollback.sql" "$P/0008_shift_planner.rollback.sql" "$P/0007_atomic_invoice_payment.rollback.sql" "$P/0006_legacy_reads_staff_only.rollback.sql" "$P/0005_guardian_links.rollback.sql" "$P/0004_hr_decisions_and_audit.rollback.sql" "$P/0003_attendance_idempotency.rollback.sql" "$P/0002_confidential_users_and_shared_invoices.rollback.sql" "$P/0001_p0_hotfix_reset_and_role_escalation.rollback.sql")
 
 step "build production-schema replica"
-apply "$H/00_supabase_stubs.sql" "$H/10_legacy_schema.sql" "$H/20_cr360_v04_foundation.sql" "$H/25_test_helpers.sql"
+apply "$H/00_supabase_stubs.sql" "$H/10_legacy_schema.sql" "$H/20_cr360_v04_foundation.sql" "$H/21_staffos_phase3_deployed.sql" "$H/25_test_helpers.sql"
 
 step "staging RLS suite (self-contained, rolls back)"
 assert -f "$ROOT/supabase/tests/rls_negative_tests.sql"

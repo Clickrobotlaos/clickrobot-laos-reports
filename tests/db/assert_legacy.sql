@@ -74,7 +74,7 @@ begin
     update public.users set role = 'admin' where id = auth.uid();
     get diagnostics n = row_count; blocked := (n = 0);
   exception when insufficient_privilege then blocked := true; end;
-  perform t.sec(blocked, 'P0-2 staff cannot make themselves admin');
+  perform t.ok(blocked, 'P0-2 staff cannot make themselves admin (closed in production 2026-11-11; 0001 adds a trigger guard too)');
 end $$;
 rollback;
 
@@ -86,7 +86,7 @@ begin
     update public.users set base_salary = 5000000 where id = auth.uid();
     get diagnostics n = row_count; blocked := (n = 0);
   exception when insufficient_privilege then blocked := true; end;
-  perform t.sec(blocked, 'P0-2 staff cannot raise own salary');
+  perform t.ok(blocked, 'P0-2 staff cannot raise own salary (closed in production 2026-11-11)');
 end $$;
 rollback;
 
@@ -107,7 +107,8 @@ begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
 do $$ declare n int; begin
   update public.users set phone = '020-TEST' where id = auth.uid(); get diagnostics n = row_count;
-  perform t.ok(n = 1, 'staff can still edit own phone');
+  -- Production 2026-11-11 dropped p_users_self_update entirely (side effect: no self-service phone edits).
+  perform t.ok(n = 0, 'staff cannot edit their own users row since the 2026-11-11 production change (owner decision to restore safe self-edits)');
 end $$;
 rollback;
 
@@ -131,7 +132,7 @@ rollback;
 -- ---------------------------------------------------------------- P0-3 colleague salary read
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000a2');
-select t.sec((select count(*) from public.users where id <> auth.uid()) = 0, 'P0-3 staff cannot read colleagues'' salary/bank rows');
+select t.ok((select count(*) from public.users where id <> auth.uid()) = 0, 'P0-3 staff cannot read colleagues'' rows (closed in production 2026-11-11)');
 select t.ok((select count(*) from public.users where id = auth.uid()) = 1, 'staff can read own users row (app-context)');
 rollback;
 
@@ -142,7 +143,7 @@ rollback;
 
 begin;
 set local role authenticated; select t.claims('00000000-0000-0000-0000-0000000000f1');
-select t.sec((select count(*) from public.users) = 1, 'B: finance without a payroll grant reads only own users row (no salaries)');
+select t.ok((select count(*) from public.users) = 1, 'B: finance reads only own users row (production 2026-11-11 and 0002)');
 select t.sec((select count(*) from public.salary_payroll where user_id is distinct from auth.uid()) = 0, 'B: finance without a payroll grant reads no colleague payslips');
 rollback;
 

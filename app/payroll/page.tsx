@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Shell } from "@/components/shell";
 import { Field, Sel } from "@/components/ui";
 import { CURRENCIES, PERMS, fmt, monthStr, toLAK, todayStr, csvDownload } from "@/lib/util";
+import { loadUsers } from "@/lib/legacy-users";
 
 export default function PayrollPage() {
   const app = useApp();
@@ -118,8 +119,8 @@ function PayrollForm({ existing, onDone, onCancel }: { existing?: any; onDone: (
   const netLak = toLAK(net, f.rate);
 
   useEffect(() => {
-    supabase.from("users").select("id,name,position,base_salary,salary_currency,role").eq("status", "Active").order("name").then(({ data }) => {
-      let list = data || [];
+    loadUsers().then(({ data }) => {
+      let list: any[] = data.filter((u: any) => (u.status ?? "Active") === "Active");
       if (!can.ceoSalary) list = list.filter((u: any) => u.role !== "admin");
       setStaffList(list);
     });

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Shell } from "@/components/shell";
 import { Field, Sel } from "@/components/ui";
 import { CURRENCIES, PERMS, ROLE_LABELS, STAFF_STATUS, fmt, todayStr, csvDownload } from "@/lib/util";
+import { loadUsers } from "@/lib/legacy-users";
 
 export default function StaffPage() {
   const app = useApp();
@@ -40,7 +41,7 @@ function StaffDirectory() {
   async function reload() {
     setLoading(true);
     const [all, exp, lv, lvAll] = await Promise.all([
-      supabase.from("users").select("*").order("name"),
+      loadUsers(),
       supabase.from("v_contracts_expiring").select("*").order("days_left"),
       canApproveLeave ? supabase.from("leave_requests").select("*").eq("status", "Pending").order("start_date") : Promise.resolve({ data: [] }),
       isCeo ? supabase.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),

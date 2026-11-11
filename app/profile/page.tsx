@@ -5,6 +5,7 @@ import { useApp } from "@/lib/app-context";
 import { supabase } from "@/lib/supabase";
 import { Shell } from "@/components/shell";
 import { fmt, ROLE_LABELS } from "@/lib/util";
+import { loadUsers } from "@/lib/legacy-users";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -27,7 +28,7 @@ function PortalView() {
   useEffect(() => {
     (async () => {
       const [u, cls, pay] = await Promise.all([
-        supabase.from("users").select("*").eq("id", app.userId).maybeSingle(),
+        loadUsers({ id: app.userId }).then((r) => ({ data: r.data[0] ?? null })),
         supabase.from("classes").select("*").eq("teacher_id", app.userId).eq("active", true).order("day_of_week").order("start_time"),
         supabase.from("salary_payroll").select("*").eq("user_id", app.userId).order("month", { ascending: false }).limit(12),
       ]);
