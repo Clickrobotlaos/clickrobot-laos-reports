@@ -9,6 +9,8 @@ import { ShiftPlanner, type PlannedShift } from "@/components/cr360/ShiftPlanner
 import { businessDate, formatDateTime } from "@/lib/cr360/i18n";
 import { studentBranchScope } from "@/lib/cr360/access";
 import { loadTeachingKpis } from "@/lib/cr360/teaching-kpis-load";
+import { AnnouncementsAdmin, type AnnRow } from "@/components/cr360/Announcements";
+import { hasRole } from "@/lib/cr360/access";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,17 @@ export default async function ManagerPage() {
   const today = businessDate(now);
   const monthStart = today.slice(0, 8) + "01";
   const kpi = await loadTeachingKpis(sb, studentBranchScope(ctx.viewer), monthStart, today);
+  // Announcements (0017): RLS shows drafts only to their managers / CEO.
+  const isCeo = hasRole(ctx.viewer, ["ceo"]);
+  const scopeB = studentBranchScope(ctx.viewer);
+  const [annRes, brRes] = await Promise.all([
+    sb.from("cr360_announcements").select("id,title_en,title_lo,audience,status,show_from,show_until,branch_id").order("created_at", { ascending: false }).limit(30),
+    sb.from("branches").select("id,name").eq("active", true).order("name"),
+  ]);
+  const branchList = ((brRes.data ?? []) as { id: string; name: string }[]).filter((b) => isCeo || (scopeB ?? []).includes(b.id));
+  const branchName = new Map(((brRes.data ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]));
+  const annRows: AnnRow[] = ((annRes.data ?? []) as (Omit<AnnRow, "branch_name"> & { branch_id: string | null })[])
+    .map((a) => ({ ...a, branch_name: a.branch_id ? branchName.get(a.branch_id) ?? "—" : null }));
   const pctCell = (v: number | null) => (v === null ? "—" : `${v}%`);
 
   const activeStaff = staff.filter((p) => p.employment_status === "active").map((p) => ({ id: p.id, name: p.display_name }));
@@ -81,6 +94,12 @@ export default async function ManagerPage() {
           <h2 id="sp-h">{t.shiftPlanner}</h2>
           <ShiftPlanner staff={activeStaff} shifts={planned} t={t} />
         </section>
+        <section className="cr-card" aria-labelledby="an-h">
+          <h2 id="an-h">📣 {t.announcements}</h2>
+          {annRes.error ? <div className="cr-banner info">{t.announcementsNotEnabled}</div>
+            : <AnnouncementsAdmin rows={annRows} branches={branchList} allowAll={isCeo} t={t} />}
+        </section>
+
         <section className="cr-card" aria-labelledby="tk-h">
           <h2 id="tk-h">{t.teachingKpis} · {monthStart} → {today}</h2>
           <p className="cr-muted">{t.teachingKpisNote}</p>

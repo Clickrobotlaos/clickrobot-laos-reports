@@ -35,6 +35,11 @@ export default async function StaffOsPage() {
     sb.from("cr360_hr_sites").select("enabled,approved_at").eq("branch_id", emp.branch_id).maybeSingle(),
   ]);
 
+  // Announcements for staff (0017; RLS: published, current, own branch or all). Missing table → none.
+  const { data: staffAnn } = await sb.from("cr360_announcements").select("id,title_en,title_lo,body_en,body_lo,show_from")
+    .eq("status", "published").in("audience", ["staff", "all"]).order("show_from", { ascending: false }).limit(5);
+  const staffAnnouncements = (staffAnn ?? []) as { id: string; title_en: string; title_lo: string | null; body_en: string; body_lo: string | null; show_from: string }[];
+
   // Classes this person teaches/assists today (legacy classes; teacher_id is the auth user id).
   const today = businessDate(now);
   const uid = ctx.viewer!.userId;
@@ -72,6 +77,18 @@ export default async function StaffOsPage() {
       <h1 className="cr-h1">{t.ws_staff}</h1>
       <p className="cr-sub">{emp.display_name} · {emp.position}</p>
       <div className="cr-banner info">{t.moneyHidden}</div>
+      {staffAnnouncements.length > 0 && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="sann-h">
+          <h2 id="sann-h">📣 {t.announcements}</h2>
+          <ul className="cr-list">{staffAnnouncements.map((a) => (
+            <li key={a.id} style={{ display: "block" }}>
+              <b>{ctx.locale === "lo" && a.title_lo ? a.title_lo : a.title_en}</b>
+              <div style={{ whiteSpace: "pre-wrap", margin: "4px 0" }}>{ctx.locale === "lo" && a.body_lo ? a.body_lo : a.body_en}</div>
+              <div className="cr-muted" style={{ fontSize: 13 }}>{a.show_from}</div>
+            </li>
+          ))}</ul>
+        </section>
+      )}
 
       <div className="cr-grid c2">
         <section className="cr-card" aria-labelledby="clock-h">

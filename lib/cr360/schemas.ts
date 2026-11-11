@@ -206,3 +206,18 @@ export const MediaInput = z.discriminatedUnion("action", [
   }).strict(),
   z.object({ action: z.enum(["share", "unshare", "remove"]), id: z.string().uuid(), reason: optText(300) }).strict(),
 ]);
+
+/** In-app announcements (0017). branchId null = all branches (CEO only; enforced in the database). */
+export const AnnouncementInput = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("save"),
+    id: z.string().uuid().optional(),
+    branchId: z.string().uuid().nullable(),
+    audience: z.enum(["parents", "staff", "all"]),
+    titleEn: z.string().trim().min(2).max(140), titleLo: optText(140),
+    bodyEn: z.string().trim().min(2).max(2000), bodyLo: optText(2000),
+    showFrom: isoDay, showUntil: isoDay,
+    publish: z.boolean().optional(),
+  }).strict(),
+  z.object({ action: z.enum(["publish", "withdraw"]), id: z.string().uuid() }).strict(),
+]);

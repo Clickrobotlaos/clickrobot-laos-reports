@@ -58,6 +58,11 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const medUrl = new Map(medSigned.map((x) => [x.path, x.signedUrl]));
   const gallery = medRows.map((m) => ({ ...m, url: medUrl.get(m.storage_path) ?? null })).filter((m) => m.url);
 
+  // Announcements (0017): published, current, for the branches of verified children.
+  const annRes = await sb.rpc("cr360_guardian_announcements");
+  const announcements = (annRes.error ? [] : annRes.data ?? []) as { id: string; title_en: string; title_lo: string | null; body_en: string; body_lo: string | null; show_from: string; branch_name: string | null }[];
+  const lo = ctx.locale === "lo";
+
   // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
   const conRes = await sb.rpc("cr360_guardian_my_consents");
   const consentsEnabled = !conRes.error;
@@ -94,7 +99,12 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               <div className="val">{p.left} <span className="cr-muted" style={{ fontSize: 15 }}>{t.of} {total}</span></div>
               <div className="cr-muted">{t.sessionsLeft}{p.package ? ` · ${p.package}` : ""}</div>
               <div className="cr-gauge" role="img" aria-label={`${t.sessionsLeft}: ${p.left} ${t.of} ${total}`}><span style={{ width: `${pct}%` }} /></div>
-              {p.active && p.left <= 2 && <div className="cr-banner warn" style={{ marginTop: 10 }}>{t.lowBalance}</div>}
+              {p.left <= 2 && (
+                <div className="cr-banner warn" style={{ marginTop: 10 }}>
+                  {p.left <= 0 ? t.renewalFinished : t.renewalReminder}{" "}
+                  <a href="#rq-h" style={{ fontWeight: 700 }}>{t.askRenewal} →</a>
+                </div>
+              )}
               {!p.active && <p className="cr-muted">{t.filterInactive}</p>}
               <p className="cr-muted">{t.startDate}: {p.start_date ?? "—"}</p>
             </section>
@@ -117,6 +127,19 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               );
             })}</ul>
           )}
+        </section>
+      )}
+
+      {announcements.length > 0 && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="ann-h">
+          <h2 id="ann-h">📣 {t.announcements}</h2>
+          <ul className="cr-list">{announcements.map((a) => (
+            <li key={a.id} style={{ display: "block" }}>
+              <b>{lo && a.title_lo ? a.title_lo : a.title_en}</b>
+              <div style={{ whiteSpace: "pre-wrap", margin: "4px 0" }}>{lo && a.body_lo ? a.body_lo : a.body_en}</div>
+              <div className="cr-muted" style={{ fontSize: 13 }}>{a.show_from}{a.branch_name ? ` · ${a.branch_name}` : ""}</div>
+            </li>
+          ))}</ul>
         </section>
       )}
 
