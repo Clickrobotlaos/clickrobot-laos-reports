@@ -52,6 +52,23 @@ returns boolean language sql stable security definer set search_path = '' as $$
   ) and cr360_authz.member_employment_ok((select auth.uid()));
 $$;
 
+-- 0005's student/guardian admin check reads memberships directly: apply the same employment rule.
+create or replace function cr360_authz.can_manage_student(p_code text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select (select auth.uid()) is not null
+     and cr360_authz.member_employment_ok((select auth.uid()))
+     and exists (select 1 from cr360_authz.student_branches(p_code))
+     and not exists (
+       select 1 from cr360_authz.student_branches(p_code) b
+       where not exists (
+         select 1 from public.cr360_hr_memberships m
+         where m.user_id = (select auth.uid()) and m.active
+           and (m.role = 'ceo' or (m.role = 'manager' and m.branch_id = b))
+       )
+     )
+$$;
+revoke all on function cr360_authz.can_manage_student(text) from public, anon, authenticated;
+
 -- 'Suspended' is a new employment status (production CHECK allows Active / On leave / Terminated).
 -- Widening the check changes no rows. employment_ok already treats it as "no access".
 alter table public.users drop constraint if exists users_status_check;

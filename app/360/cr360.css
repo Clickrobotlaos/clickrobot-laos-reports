@@ -134,3 +134,17 @@
 .cr-switch.on { background: var(--c-teal); border-color: var(--c-teal); color: #fff; }
 .cr-switch:disabled { opacity: .6; cursor: wait; }
 .cr-switch:focus-visible { outline: 3px solid var(--c-primary); outline-offset: 2px; }
+
+/* Printable certificate */
+.cr-cert { max-width: 760px; margin: 0 auto; padding: 40px 28px; text-align: center; background: var(--c-surface); border: 10px double var(--c-teal); border-radius: 18px; }
+.cr-cert h1 { font-size: clamp(24px, 5vw, 36px); margin: 6px 0 18px; color: var(--c-teal); }
+.cr-cert-brand { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--c-primary); margin: 0; }
+.cr-cert-name { font-size: clamp(26px, 6vw, 40px); font-weight: 800; margin: 8px 0; }
+.cr-cert-title { font-size: clamp(18px, 4vw, 24px); font-weight: 700; margin: 8px 0 18px; }
+.cr-cert-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 28px; font-size: 14px; }
+@media print {
+  .cr-noprint, .cr-nav, .cr-top { display: none !important; }
+  .cr-shell, .cr-main { display: block !important; padding: 0 !important; margin: 0 !important; }
+  body { background: #fff !important; }
+  .cr-cert { border-color: #0d9488; color: #000; background: #fff; }
+}

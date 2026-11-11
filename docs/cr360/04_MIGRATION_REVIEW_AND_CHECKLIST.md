@@ -59,6 +59,7 @@ Record these again immediately before applying. Every migration must leave these
 | **0011** | Decision C: several classes per day; one deduction per attended class; never twice | Replaces `UNIQUE(package_id,date)` with per-class unique index + class-less unique index + race-safe trigger | **0** | Refuses if any package has 2 rows on a day (would require deleting attendance) | 0003 |
 | **0012** | Decision A: memberships follow employment; CEO-only audited suspend / reinstate / offboard; `Suspended` status | Widens `users_status_check`; redefines 3 v0.4 helper functions; 5 functions | **0** | Refuses while anyone is Suspended | 0002, 0004, 0006 |
 | 0014 | Parent portal: next-14-day schedule (incl. makeups) and invoices/payments linked to the child's packages; read-only functions for verified parents | 2 functions | **0** | Drops functions | 0005 |
+| 0015 | Achievements & certificates: teacher proposes, branch manager/CEO issues (numbered), declines or revokes with reason; parents see issued ones and print certificates; audited | 1 table + counter; 6 functions | **0** | Drops functions; keeps records | 0005, 0010, 0012 |
 | **0013** | Decision D: consent per purpose (portal media, AI reports, notifications, separate public marketing), private by default, reviewable/withdrawable; any guardian's withdrawal wins | 1 append-only table; 5 functions | **0** | Drops functions; keeps consent history | 0005 |
 
 **No migration deletes, overwrites or reformats existing data.** The only statements that touch existing
@@ -149,6 +150,7 @@ command centre. No duplicate tables were created for those purposes in 0001–00
 - [ ] **0012**: suspend / reinstate / offboard (decision A)
 - [ ] **0007**: one-time payment recording (before real payments are recorded in the app)
 - [ ] **0008**, **0009**, **0010**: shifts, parent requests, lesson logs + substitutes
+- [ ] **0014**, **0015**: parent schedule/invoices; achievements and certificates
 
 **After each group**
 - [ ] Re-run §1 counts: unchanged

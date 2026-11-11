@@ -7,6 +7,7 @@ import { reconcilePackage } from "@/lib/cr360/students";
 import { loadAttendanceFor, loadNames, loadScopedPackages } from "@/lib/cr360/legacy-students";
 import { Unauthorized } from "@/components/cr360/Blocks";
 import { GuardianPanel, type LinkRow } from "@/components/cr360/GuardianPanel";
+import { AchievementReview, type AchievementRow } from "@/components/cr360/Achievements";
 import { guardianConsentVersion } from "@/lib/cr360/guardian-admin";
 import { rpcErrorCode } from "@/lib/cr360/rpc-errors";
 
@@ -53,6 +54,11 @@ export default async function StudentDetail({ params }: { params: Promise<{ code
   const links = (linkRes.data ?? []) as LinkRow[];
   const name = [...packages].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0].student_name;
 
+  // Achievements (0015): RLS returns rows only for the branch manager / CEO / the child's teachers.
+  const achRes = realCode
+    ? await sb.from("cr360_achievements").select("id,kind,title_en,title_lo,awarded_on,status,certificate_no").eq("student_code", code).order("proposed_at", { ascending: false }).limit(100)
+    : { data: [], error: null };
+
   return (
     <>
       <Link href="/360/students" className="cr-muted">← {t.back}</Link>
@@ -66,6 +72,13 @@ export default async function StudentDetail({ params }: { params: Promise<{ code
           : !linksEnabled ? <div className="cr-banner info">{t.guardianNotEnabled}</div>
           : linkRes.error ? <div className="cr-banner bad">{t.err_server_error}</div>
           : <GuardianPanel studentCode={code} links={links} consentVersion={guardianConsentVersion()} t={t} />}
+      </section>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="ach-h">
+        <h2 id="ach-h">{t.achievements}</h2>
+        {!realCode ? <p className="cr-muted">—</p>
+          : achRes.error ? <div className="cr-banner info">{t.achievementsNotEnabled}</div>
+          : <AchievementReview rows={(achRes.data ?? []) as AchievementRow[]} t={t} />}
       </section>
 
       {packages.map((p) => {

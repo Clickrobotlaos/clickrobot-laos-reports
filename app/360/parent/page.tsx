@@ -46,6 +46,10 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const dayLabel = (d: string) => new Intl.DateTimeFormat(ctx.locale === "lo" ? "lo-LA" : "en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
   const invStatus: Record<string, string> = { Paid: t.invPaid, Sent: t.invSent, Cancelled: t.invCancelled };
 
+  // Achievements (0015): issued only, verified child only; missing function → section hidden.
+  const achRes = await sb.rpc("cr360_guardian_achievements", { p_student_code: current.code });
+  const achievements = (achRes.error ? null : achRes.data ?? []) as { id: string; kind: string; title_en: string; title_lo: string | null; awarded_on: string; certificate_no: string | null }[] | null;
+
   // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
   const conRes = await sb.rpc("cr360_guardian_my_consents");
   const consentsEnabled = !conRes.error;
@@ -105,6 +109,18 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
               );
             })}</ul>
           )}
+        </section>
+      )}
+
+      {achievements && achievements.length > 0 && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="pach-h">
+          <h2 id="pach-h">🏆 {t.achievements}</h2>
+          <ul className="cr-list">{achievements.map((a) => (
+            <li key={a.id}>
+              <span><b>{ctx.locale === "lo" && a.title_lo ? a.title_lo : a.title_en}</b><br /><span className="cr-muted">{a.awarded_on}{a.certificate_no ? ` · ${a.certificate_no}` : ""}</span></span>
+              <Link className="cr-btn ghost" style={{ minHeight: 40 }} href={`/360/parent/certificate/${a.id}?child=${encodeURIComponent(current.code)}`}>{t.viewCertificate}</Link>
+            </li>
+          ))}</ul>
         </section>
       )}
 

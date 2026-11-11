@@ -32,5 +32,13 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select (select auth.uid()) is not null and exists (
     select 1 from public.cr360_hr_memberships m where m.user_id = (select auth.uid()) and m.active);
 $$;
+create or replace function cr360_authz.can_manage_student(p_code text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select (select auth.uid()) is not null
+     and exists (select 1 from cr360_authz.student_branches(p_code))
+     and not exists (select 1 from cr360_authz.student_branches(p_code) b
+       where not exists (select 1 from public.cr360_hr_memberships m where m.user_id = (select auth.uid()) and m.active
+           and (m.role = 'ceo' or (m.role = 'manager' and m.branch_id = b))))
+$$;
 drop function if exists cr360_authz.member_employment_ok(uuid);
 commit;

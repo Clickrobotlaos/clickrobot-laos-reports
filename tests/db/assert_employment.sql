@@ -85,3 +85,12 @@ update public.users set end_date = (now() at time zone 'Asia/Vientiane')::date -
 select t.ok(public.cr360_staff_close_ended() = 1, 'A housekeeping marks people past their last day as Terminated');
 select t.ok((select status from public.users where id = '00000000-0000-0000-0000-0000000000a3') = 'Terminated', 'A housekeeping keeps the row');
 rollback;
+
+-- a suspended branch manager (360-only, employee row) can no longer manage students / parent links
+-- (helper is not executable by API roles; evaluated as owner with the manager's identity)
+begin;
+select t.claims('00000000-0000-0000-0000-0000000000a1');
+select t.ok(cr360_authz.can_manage_student('TST-001'), 'A active branch manager manages own-branch students');
+update public.cr360_hr_employees set employment_status = 'suspended' where auth_user_id = '00000000-0000-0000-0000-0000000000a1';
+select t.ok(not cr360_authz.can_manage_student('TST-001'), 'A suspended manager loses student and parent-link administration');
+rollback;

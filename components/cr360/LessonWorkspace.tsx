@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Dict, DictKey } from "@/lib/cr360/i18n";
 import { RUBRIC_SKILLS, type Rubric, type RubricSkill } from "@/lib/cr360/reports";
+import { AwardForm } from "./Achievements";
 
 export interface LessonFields { unit: string; lessonTitle: string; level: string; covered: string; nextPlan: string; substituteNotes: string }
 export interface StudentRow {
@@ -167,6 +168,7 @@ export function LessonWorkspace({ classId, date, logId: initialLogId, lesson: in
               <button type="button" className="cr-btn teal" disabled={busy !== null || r.status === "approved" || !(r.reportEn.trim() || r.reportLo.trim())} onClick={() => approve(r)}>{t.approveReport}</button>
               <button type="button" className="cr-btn ghost" disabled={!(r.reportEn.trim() || r.reportLo.trim())} onClick={() => copy(r)}>{t.copyReport}</button>
             </div>
+            <AwardForm packageId={r.packageId} t={t} />
           </article>
         ))}
       </section>

@@ -176,3 +176,18 @@ export const GuardianConsentInput = z.object({
   purpose: z.enum(CONSENT_PURPOSES),
   granted: z.boolean(),
 }).strict();
+
+/** Achievements & certificates (0015): teacher proposes; branch manager / CEO issues, declines or revokes. */
+export const AchievementInput = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("propose"),
+    packageId: z.string().uuid(),
+    kind: z.enum(["badge", "level_complete", "competition", "certificate"]),
+    titleEn: z.string().trim().min(2).max(160),
+    titleLo: optText(160),
+    level: optText(100),
+    awardedOn: isoDay,
+    note: optText(500),
+  }).strict(),
+  z.object({ action: z.enum(["issue", "decline", "revoke"]), id: z.string().uuid(), reason: optText(300) }).strict(),
+]);
