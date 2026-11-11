@@ -51,9 +51,9 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 23 | Franchise & royalties | Not started | Needs signed agreement figures |
 | 24 | Inventory | Not started | |
 | 25 | 2.5D/3D classroom fill | **Live** | Isometric seat map per class from real bookings (regulars + that day's makeups), text alternative |
-| 26 | Daily cashbook | Not started | |
+| 26 | Daily cashbook | **Partial (live view + 0019)** | `/360/finance/cashbook`: day's lines and totals per method/currency (works today); cash count vs system cash with recount history (0019) | |
 | 27 | Invoices/payments/refunds | **Partial (on approval 0007)** | Open/overdue invoices; "Record payment" (atomic: income + registration + package exactly once) in `/360/finance` and the Records app's Mark paid button. Missing: partial payments, refunds, statement matching |
-| 28 | Expenses/purchasing | **Partial (live, read-only)** | Expenses by category/branch. Missing: purchase requests/POs |
+| 28 | Expenses/purchasing | **Partial (live, read-only)** | Expenses by category/branch. Expense requests with approval and one-time payment (0019). Missing: purchase orders |
 | 29 | Budgets/approvals | Not started | |
 | 30 | Branch P&L / cash flow | **Partial (live)** | Operational income − expenses by branch and month, labelled not reconciled |
 | 31 | CEO compensation / partner distributions | Not started | Access model and tests exist (`canReadExecutiveFinance`) |

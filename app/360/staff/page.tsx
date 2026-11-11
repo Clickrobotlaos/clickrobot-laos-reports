@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Reveal } from "@/components/cr360/HrAdmin";
+import { ExpenseQueue, ExpenseRequestForm, type ExpenseRow } from "@/components/cr360/BranchFinance";
 import { loadViewer } from "@/lib/cr360/viewer";
 import { supabaseServer } from "@/lib/cr360/supabase-server";
 import { canUseWorkspace } from "@/lib/cr360/access";
@@ -43,6 +44,11 @@ export default async function StaffOsPage() {
   const { data: slips } = await sb.from("salary_payroll").select("id,month,net,currency,status,pay_date,slip_no").eq("user_id", uid0).order("month", { ascending: false }).limit(12);
   const payslips = (slips ?? []) as { id: string; month: string; net: number; currency: string; status: string | null; pay_date: string | null; slip_no: string | null }[];
   const fmtMoney = (n: number | null, c: string | null) => n === null ? "—" : `${Number(n).toLocaleString(ctx.locale === "lo" ? "lo-LA" : "en-US")} ${c ?? ""}`;
+
+  // My expense requests (0019; RLS: own requests). Missing table → section hidden.
+  const exRes = await sb.from("cr360_expense_requests").select("id,category,description,amount,currency,amount_lak,status,created_at")
+    .eq("requested_by", uid0).order("created_at", { ascending: false }).limit(10);
+  const myExpenses: ExpenseRow[] = ((exRes.data ?? []) as Omit<ExpenseRow, "branch" | "mine">[]).map((r) => ({ ...r, branch: "", mine: true }));
 
   // Announcements for staff (0017; RLS: published, current, own branch or all). Missing table → none.
   const { data: staffAnn } = await sb.from("cr360_announcements").select("id,title_en,title_lo,body_en,body_lo,show_from")
@@ -93,6 +99,15 @@ export default async function StaffOsPage() {
         <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/messages" style={{ minHeight: 40 }}>💬 {t.parentMessages}{msgUnread > 0 ? ` · ${msgUnread} ${t.unreadCount}` : ""}</a></p>
       )}
       <p className="cr-sub">{emp.display_name} · {emp.position}</p>
+      {!exRes.error && (
+        <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="ex-h">
+          <h2 id="ex-h">🧾 {t.myExpenses}</h2>
+          <ExpenseQueue rows={myExpenses} canDecide={false} canPay={false} t={t} />
+          <details style={{ marginTop: 10 }}><summary className="cr-btn ghost" style={{ display: "inline-flex" }}>{t.requestExpense}</summary>
+            <div style={{ marginTop: 8 }}><ExpenseRequestForm branchId={emp.branch_id} t={t} /></div></details>
+        </section>
+      )}
+
       <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="pay-h">
         <h2 id="pay-h">💰 {t.myPay}</h2>
         {conf.error ? <p className="cr-muted">{t.myPayNotEnabled}</p> : (

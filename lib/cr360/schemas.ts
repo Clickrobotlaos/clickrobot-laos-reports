@@ -237,3 +237,19 @@ export const HrAdminInput = z.discriminatedUnion("action", [
 
 /** NOVA parent question (the child is taken from the parent's verified links, never trusted from the browser). */
 export const NovaInput = z.object({ studentCode: z.string().trim().min(1).max(80), question: z.string().trim().min(2).max(500) }).strict();
+
+/** Branch finance (0019): expense requests, decisions, payment, cash count, manager limit. */
+const money = z.number().positive().max(1_000_000_000);
+export const BranchFinanceInput = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("request"), branchId: z.string().uuid(),
+    category: z.enum(["Rent", "Marketing", "Equipment", "Utilities", "Transportation", "Stationery", "Event Cost", "Maintenance", "Other"]),
+    description: z.string().trim().min(3).max(500), supplier: optText(120),
+    amount: money, currency: z.enum(["LAK", "THB", "USD"]), rate: z.number().positive().max(1_000_000).optional(), neededBy: isoDay.optional(),
+  }).strict(),
+  z.object({ action: z.enum(["approve", "reject", "cancel"]), id: z.string().uuid(), note: optText(300) }).strict(),
+  z.object({ action: z.literal("pay"), id: z.string().uuid(), method: z.enum(["Cash", "Bank Transfer", "QR Payment", "Other"]), date: isoDay }).strict(),
+  z.object({ action: z.literal("count"), branchId: z.string().uuid(), date: isoDay,
+    counted: z.object({ LAK: z.number().min(0).optional(), THB: z.number().min(0).optional(), USD: z.number().min(0).optional() }).strict(), note: optText(300) }).strict(),
+  z.object({ action: z.literal("limit"), lak: z.number().min(0).max(100_000_000) }).strict(),
+]);
