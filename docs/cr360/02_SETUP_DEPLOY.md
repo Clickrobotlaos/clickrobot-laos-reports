@@ -10,17 +10,23 @@ npm run dev                       # legacy app at /, ClickRobot 360 at /360
 ## Checks (all must pass before merging)
 ```bash
 npm run typecheck
-npm test                          # 117 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
+npm test                          # 139 unit tests (access, privacy, ledger, booking, GPS, payroll, money, schemas)
 npx eslint lib/cr360 app/360 app/api/cr360 components/cr360 tests
 npm run build
 npm start & BASE_URL=http://localhost:3000 npm run test:smoke   # 36 auth-boundary checks
 npm run test:render               # 41 rendered-page checks as 4 personas (fake Supabase; see tests/e2e/README.md)
 ```
-Database harness: local throwaway Postgres, never touches Supabase. It reproduces each audited vulnerability, applies 0001–0010 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
+Database harness: local throwaway Postgres, never touches Supabase. It rebuilds today's production schema, reproduces each open issue, applies 0001–0013 (twice), asserts the fixes plus legacy regressions, then rolls back and re-applies:
 ```bash
 npm run test:db
 ```
 Staging RLS tests (never production): `psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls_negative_tests.sql`
+
+## Backup and rehearsal on real data (before any production migration)
+```bash
+REHEARSE=1 bash tests/db/restore-check.sh full-backup.sql   # local, free, deletes the copy
+```
+See `04_MIGRATION_REVIEW_AND_CHECKLIST.md` §4.
 
 ## Activating the first real workflow (StaffOS self check-in + requests)
 These steps write to production and need CEO approval and execution, in order:
@@ -33,7 +39,7 @@ These steps write to production and need CEO approval and execution, in order:
 
 ## Deploy (Vercel) — only with owner consent
 - Env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Do not** add a service-role key.
-- Optional, server-only: `ANTHROPIC_API_KEY` (AI parent-report drafts) and `CR360_GUARDIAN_CONSENT_VERSION` (enables parent verification).
+- Optional, server-only: `CR360_GUARDIAN_CONSENT_VERSION` (enables parent verification and consent grants). AI drafts stay off unless ALL of `CR360_AI_DRAFTS_ENABLED=true`, `CR360_AI_MODEL` and `ANTHROPIC_API_KEY` are set, which happens only after the owner verifies a real test call.
 - Supabase Auth → URL configuration: add the Vercel domain to redirect URLs.
 - Supabase Auth: enable leaked-password protection; enable MFA (TOTP) for CEO/HR/finance before payroll ships.
 - Use preview deployments for review; promote to production only after the gates in `00_AUDIT_AND_BLOCKERS.md §5`.

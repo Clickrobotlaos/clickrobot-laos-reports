@@ -50,7 +50,7 @@ Browser (Lao/English, mobile-first)
 
 **ADR-004: Two-layer enforcement.** Pure TS policy (`access.ts`) is unit-tested and used by pages/routes. RLS is the final gate, tested by `supabase/tests`. A bug in one layer is caught by the other.
 
-**ADR-005: Staff never see money fields by default.** This is the owner's decision. StaffOS queries select no money columns; `redact.ts` strips them defensively; `canReadPayroll` denies staff, teachers, finance-by-role and partners.
+**ADR-005: Pay is need-to-know (owner decision B, 2026-11-11; supersedes the earlier "staff see no money" rule).** The CEO sees all pay; a payroll/HR administrator only with an explicit, revocable CEO grant; every person sees their own pay; managers, finance and partners see none by role. Enforced in the database (0002: row policies, `cr360_staff_confidential()`, write guard) and mirrored in `canReadPayroll`. Directory screens still select no money columns.
 
 **ADR-006: Ledger, not counters.** Session balance is derived from append-only entries. Attendance debit is idempotent per (student, class session); undo is a compensating credit with a reason. Legacy `sessions_used` stays until migrated. Its existing `UNIQUE(package_id,date)` already prevents double debit; `0003` adds an append-only audit.
 
@@ -85,4 +85,12 @@ Browser (Lao/English, mobile-first)
 
 **ADR-016: Multi-row business events are one database function.** Recording a payment touches income, registration, invoice and (via trigger) the session package. It runs as one `SECURITY DEFINER` function under a row lock, idempotent by invoice state, with legacy role and closed-month rules enforced inside. Browser code never sequences financial writes.
 
-**ADR-017: AI drafts, humans approve; children are de-identified before any model call.** Parent reports are drafted by Claude (`lib/cr360/ai-reports.ts`, official SDK, structured output, server-side refusal fallback) or by a deterministic template. The model receives only lesson content, rubric scores and notes with every class member's name removed (`lib/cr360/reports.ts`). The send is refused if a name survives. Drafts are never saved or shown to parents without a teacher's explicit approval, and the database (0010) enforces that edits reset approval.
+**ADR-017: AI drafts, humans approve; off until verified; consent per child; children are de-identified before any model call.** The model id is configuration (`CR360_AI_MODEL`), never code; `CR360_AI_DRAFTS_ENABLED` must be set by the owner. Only children with AI consent (0013) are sent; contact and ID details are removed as well as names. Parent reports are drafted by Claude (`lib/cr360/ai-reports.ts`, official SDK, structured output, server-side refusal fallback) or by a deterministic template. The model receives only lesson content, rubric scores and notes with every class member's name removed (`lib/cr360/reports.ts`). The send is refused if a name survives. Drafts are never saved or shown to parents without a teacher's explicit approval, and the database (0010) enforces that edits reset approval.
+
+**ADR-018: Need-to-know teaching records.** Same-branch membership grants nothing. Substitutes get access through a dated, revocable, audited assignment by the branch manager (0010).
+
+**ADR-019: Consent is an event log, not a flag.** Every grant/withdrawal is an append-only row with the consent text version and method; the current state is the latest event; any verified guardian's withdrawal wins; absence means no.
+
+**ADR-020: Authorization guards are written `is not true`.** A NULL from a helper must deny. Found twice (P0-1 in legacy, and once in a 0002 draft).
+
+**ADR-021: Test against today's production, not yesterday's.** Production can change outside this repo (it did on 2026-11-11). Before asking for approval, re-read migration history and rebuild the replica (`tests/db/harness/21_*`).
