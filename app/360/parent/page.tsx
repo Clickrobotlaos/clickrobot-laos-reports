@@ -35,6 +35,17 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const repRes = await sb.rpc("cr360_guardian_reports", { p_student_code: current.code });
   const reports = (repRes.error ? null : (repRes.data ?? [])) as { lesson_date: string; class_name: string; unit: string | null; lesson_title: string; level: string | null; report_en: string | null; report_lo: string | null }[] | null;
 
+  // Schedule + invoices (0014): missing functions → "coming soon"; data only for a verified child.
+  const [schRes, invRes] = await Promise.all([
+    sb.rpc("cr360_guardian_schedule", { p_student_code: current.code }),
+    sb.rpc("cr360_guardian_invoices", { p_student_code: current.code }),
+  ]);
+  const schedule = (schRes.error ? null : schRes.data ?? []) as { class_date: string; start_time: string; end_time: string; class_name: string; room: string | null; branch_name: string | null; kind: string }[] | null;
+  const invoices = (invRes.error ? null : invRes.data ?? []) as { invoice_no: string; invoice_date: string; due_date: string | null; package: string | null; amount: number; currency: string; status: string; paid_at: string | null }[] | null;
+  const money = (n: number, c: string) => { try { return new Intl.NumberFormat(ctx.locale === "lo" ? "lo-LA" : "en-US", { style: "currency", currency: c, maximumFractionDigits: c === "LAK" ? 0 : 2 }).format(n); } catch { return `${n} ${c}`; } };
+  const dayLabel = (d: string) => new Intl.DateTimeFormat(ctx.locale === "lo" ? "lo-LA" : "en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
+  const invStatus: Record<string, string> = { Paid: t.invPaid, Sent: t.invSent, Cancelled: t.invCancelled };
+
   // Consent choices (0013): missing function → "coming soon"; only this guardian's own rows come back.
   const conRes = await sb.rpc("cr360_guardian_my_consents");
   const consentsEnabled = !conRes.error;
@@ -96,6 +107,37 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
           )}
         </section>
       )}
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="up-h">
+        <h2 id="up-h">{t.upcomingClasses}</h2>
+        {schedule === null ? <p className="cr-muted">{t.portalSoon}</p> : schedule.length === 0 ? <p className="cr-muted">{t.noUpcomingClasses}</p> : (
+          <ul className="cr-list">{schedule.map((c, i) => (
+            <li key={`${c.class_date}-${c.start_time}-${i}`}>
+              <span><b>{dayLabel(c.class_date)}</b> · {String(c.start_time).slice(0, 5)}–{String(c.end_time).slice(0, 5)}
+                {c.kind === "makeup" && <span className="cr-badge" style={{ marginLeft: 6 }}>{t.makeupClass}</span>}
+                <br /><span className="cr-muted">{[c.class_name, c.room, c.branch_name].filter(Boolean).join(" · ")}</span></span>
+            </li>
+          ))}</ul>
+        )}
+      </section>
+
+      <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="inv-h">
+        <h2 id="inv-h">{t.invoicesPayments}</h2>
+        {invoices === null ? <p className="cr-muted">{t.portalSoon}</p> : (
+          <>
+            {invoices.length === 0 ? <p className="cr-muted">{t.noInvoices}</p> : (
+              <ul className="cr-list">{invoices.map((v) => (
+                <li key={v.invoice_no}>
+                  <span><b>{v.invoice_no}</b> · {v.invoice_date}<br /><span className="cr-muted">{v.package ?? ""}</span></span>
+                  <span style={{ textAlign: "right" }}><b>{money(Number(v.amount), v.currency)}</b><br />
+                    <span className={`cr-badge ${v.status === "Paid" ? "approved" : v.status === "Sent" ? "pending" : ""}`}>{invStatus[v.status] ?? v.status}</span></span>
+                </li>
+              ))}</ul>
+            )}
+            <p className="cr-muted" style={{ marginTop: 8 }}>{t.invoicesNote}</p>
+          </>
+        )}
+      </section>
 
       <section className="cr-card" style={{ marginTop: 14 }} aria-labelledby="rq-h">
         <h2 id="rq-h">{t.myRequests}</h2>
