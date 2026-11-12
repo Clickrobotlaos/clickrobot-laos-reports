@@ -253,3 +253,13 @@ export const BranchFinanceInput = z.discriminatedUnion("action", [
     counted: z.object({ LAK: z.number().min(0).optional(), THB: z.number().min(0).optional(), USD: z.number().min(0).optional() }).strict(), note: optText(300) }).strict(),
   z.object({ action: z.literal("limit"), lak: z.number().min(0).max(100_000_000) }).strict(),
 ]);
+
+/** Inventory (0020). */
+export const InventoryInput = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("item"), id: z.string().uuid().optional(), sku: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9-]{1,39}$/),
+    name: z.string().trim().min(2).max(120), category: z.enum(["kit", "part", "consumable", "device", "other"]), unit: z.string().trim().min(1).max(12),
+    reorder: z.number().int().min(0).max(100000), active: z.boolean().optional() }).strict(),
+  z.object({ action: z.literal("move"), itemId: z.string().uuid(), branchId: z.string().uuid(),
+    kind: z.enum(["receive", "issue", "transfer", "adjust_up", "adjust_down", "damaged", "lost"]), qty: z.number().int().min(1).max(100000),
+    note: optText(300), toBranchId: z.string().uuid().optional() }).strict(),
+]);

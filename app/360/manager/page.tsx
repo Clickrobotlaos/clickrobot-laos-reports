@@ -80,7 +80,7 @@ export default async function ManagerPage() {
   return (
     <>
       <h1 className="cr-h1">{t.ws_manager}</h1>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/finance/expenses" style={{ minHeight: 40 }}>🧾 {t.expenseRequests}</a><a className="cr-btn ghost" href="/360/finance/cashbook" style={{ minHeight: 40 }}>📒 {t.cashbook}</a></p>
+      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/finance/expenses" style={{ minHeight: 40 }}>🧾 {t.expenseRequests}</a><a className="cr-btn ghost" href="/360/finance/cashbook" style={{ minHeight: 40 }}>📒 {t.cashbook}</a><a className="cr-btn ghost" href="/360/inventory" style={{ minHeight: 40 }}>📦 {t.inventory}</a></p>
       {msgUnread !== null && (
         <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/messages" style={{ minHeight: 40 }}>💬 {t.parentMessages}{msgUnread > 0 ? ` · ${msgUnread} ${t.unreadCount}` : ""}</a></p>
       )}

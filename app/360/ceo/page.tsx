@@ -44,7 +44,7 @@ export default async function CeoPage() {
   return (
     <>
       <h1 className="cr-h1">{t.ws_ceo}</h1>
-      <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/hr" style={{ minHeight: 40 }}>👥 {t.peopleAccess}</a></p>
+      <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/hr" style={{ minHeight: 40 }}>👥 {t.peopleAccess}</a> <a className="cr-btn ghost" href="/360/inventory" style={{ minHeight: 40 }}>📦 {t.inventory}</a> <a className="cr-btn ghost" href="/360/finance/expenses" style={{ minHeight: 40 }}>🧾 {t.expenseRequests}</a></p>
       <p className="cr-sub">{t.asOf} {formatDateTime(asOf, ctx.locale)} · {t.sourceNote}</p>
       {errors > 0 && <div className="cr-banner bad">{t.err_server_error} ({errors})</div>}
 

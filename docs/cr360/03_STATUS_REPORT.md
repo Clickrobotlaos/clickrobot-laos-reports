@@ -49,7 +49,7 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 21 | Branches & HQ/franchise access | **Partial** | Branch scoping in every /360 page; franchise tenancy not modelled |
 | 22 | School partners | Not started | Needs current contract terms |
 | 23 | Franchise & royalties | Not started | Needs signed agreement figures |
-| 24 | Inventory | Not started | |
+| 24 | Inventory | **On approval (0020)** | `/360/inventory`: stock per branch with re-order flags; receive/use/transfer/corrections; CEO catalogue | |
 | 25 | 2.5D/3D classroom fill | **Live** | Isometric seat map per class from real bookings (regulars + that day's makeups), text alternative |
 | 26 | Daily cashbook | **Partial (live view + 0019)** | `/360/finance/cashbook`: day's lines and totals per method/currency (works today); cash count vs system cash with recount history (0019) | |
 | 27 | Invoices/payments/refunds | **Partial (on approval 0007)** | Open/overdue invoices; "Record payment" (atomic: income + registration + package exactly once) in `/360/finance` and the Records app's Mark paid button. Missing: partial payments, refunds, statement matching |
