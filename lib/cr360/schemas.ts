@@ -263,3 +263,12 @@ export const InventoryInput = z.discriminatedUnion("action", [
     kind: z.enum(["receive", "issue", "transfer", "adjust_up", "adjust_down", "damaged", "lost"]), qty: z.number().int().min(1).max(100000),
     note: optText(300), toBranchId: z.string().uuid().optional() }).strict(),
 ]);
+
+/** CRM growth (0021). */
+export const GrowthInput = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("campaign"), id: z.string().uuid().optional(), name: z.string().trim().min(2).max(120),
+    channel: z.enum(["Facebook", "TikTok", "Flyer", "Event", "School visit", "Referral", "Other"]), branchId: z.string().uuid().nullable(),
+    from: isoDay, to: isoDay, budget: z.number().min(0).max(10_000_000_000), spent: z.number().min(0).max(10_000_000_000) }).strict(),
+  z.object({ action: z.literal("attribute"), leadId: z.string().uuid(), campaignId: z.string().uuid().optional(), referrer: z.string().trim().max(80).optional() }).strict(),
+  z.object({ action: z.enum(["approve", "give", "decline"]), leadId: z.string().uuid(), text: optText(200) }).strict(),
+]);

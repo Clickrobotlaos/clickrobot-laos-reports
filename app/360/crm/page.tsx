@@ -35,6 +35,7 @@ export default async function CrmPage() {
   return (
     <>
       <h1 className="cr-h1">{t.ws_crm}</h1>
+      <p style={{ margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/crm/growth" style={{ minHeight: 40 }}>📈 {t.growth}</a></p>
       <p className="cr-sub">{t.crmSub} {scope === null ? t.scopeAll : t.scopeBranch}</p>
       {error && <div className="cr-banner bad">{t.err_server_error}</div>}
 

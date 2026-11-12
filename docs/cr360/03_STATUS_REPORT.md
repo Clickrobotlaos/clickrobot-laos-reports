@@ -39,7 +39,7 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 11 | Private child media | **On approval (0016)** | Private bucket; photos shrunk on the phone (1600 px JPEG), short MP4 videos (≤60 s, ≤50 MB); 6 photos + 1 video per class/day; tag children; share only with every tagged child's consent; parent gallery with 1-hour links; 90-day expiry. Check storage allowance before enabling |
 | 12 | Competitions/teams | Not started | |
 | 13 | CRM trial-to-sale | **Live** | `/360/crm` Kanban, funnel, follow-up SLA flags, safe stage moves with race protection. Trial booking/registration in Records app |
-| 14 | Marketing/referrals | Not started | |
+| 14 | Marketing/referrals | **On approval (0021)** | `/360/crm/growth`: campaigns with budget/spend, cost per lead and per registration, lead attribution, referral rewards after registration, top referring families | |
 | 15 | WhatsApp/email | Not started | Needs WhatsApp Business account; will never mark "sent" without provider confirmation |
 | 16 | Service desk (absence/extension) | **On approval (0009)** | Parent requests from `/360/parent`; managers approve/reject in the shared queue on `/360/manager`; approval never changes sessions automatically |
 | 17 | HR employee directory | **Live** | `/360/manager` branch staff, safe columns only |

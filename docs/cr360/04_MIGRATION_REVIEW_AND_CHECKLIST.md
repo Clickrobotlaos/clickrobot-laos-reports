@@ -65,6 +65,7 @@ Record these again immediately before applying. Every migration must leave these
 | 0018 | Secure in-app parent–staff messaging per child; parent (verified) ↔ branch manager/CEO and the child's own teachers/substitute only; append-only; close/reopen; 30 msgs/hour; never external or AI | 2 tables; 6 functions | **0** | Drops functions; keeps conversations | 0005, 0012, 0015 |
 | 0019 | Branch finance: expense requests (manager approves up to a CEO-set limit, default 0 = CEO only; no self-approval; requester cannot pay; salary excluded); pay writes ONE expense_records row (closed months respected); daily cash count vs system cash, recounts kept | 3 tables; 9 functions | **0** (rows added only when paying) | Drops functions; keeps records | 0001, 0004, 0006, 0012 |
 | 0020 | Inventory: CEO catalogue; append-only stock movements per branch (receive, use, transfer both sides at once, corrections/damaged/lost with note); no negative stock; staff view own branch | 2 tables; 4 functions | **0** | Drops functions; keeps history | 0010, 0012, 0019 |
+| 0021 | Marketing campaigns, lead attribution (campaign / referring student) without altering `leads`, referral rewards only after registration (approve → given / decline), campaign cost per lead/registration, referral leaderboard | 3 tables; 5 functions | **0** | Drops functions; keeps records | 0004, 0006, 0012, 0020 |
 | **0013** | Decision D: consent per purpose (portal media, AI reports, notifications, separate public marketing), private by default, reviewable/withdrawable; any guardian's withdrawal wins | 1 append-only table; 5 functions | **0** | Drops functions; keeps consent history | 0005 |
 
 **No migration deletes, overwrites or reformats existing data.** The only statements that touch existing
@@ -159,6 +160,7 @@ command centre. No duplicate tables were created for those purposes in 0001–00
 - [ ] **0017**: in-app announcements
 - [ ] **0018**: parent–staff messaging
 - [ ] **0020**: inventory
+- [ ] **0021**: marketing campaigns and referral rewards
 - [ ] **0019**: branch finance (set the manager approval limit after applying)
 - [ ] **0016**: class photos/videos. Check the plan's storage allowance first (estimate in the media section of the status report)
 
