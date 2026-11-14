@@ -54,7 +54,7 @@ are re-based on that state. **P0-1 (anonymous data wipe) is still open in produc
 | 26 | Daily cashbook | **Partial (live view + 0019)** | `/360/finance/cashbook`: day's lines and totals per method/currency (works today); cash count vs system cash with recount history (0019) | |
 | 27 | Invoices/payments/refunds | **Partial (on approval 0007)** | Open/overdue invoices; "Record payment" (atomic: income + registration + package exactly once) in `/360/finance` and the Records app's Mark paid button. Missing: partial payments, refunds, statement matching |
 | 28 | Expenses/purchasing | **Partial (live, read-only)** | Expenses by category/branch. Expense requests with approval and one-time payment (0019). Missing: purchase orders |
-| 29 | Budgets/approvals | Not started | |
+| 29 | Budgets/approvals | **On approval (0022)** | `/360/finance/budgets`: CEO sets monthly budget per branch/category; spent vs approved-unpaid vs remaining; managers blocked from approving over budget | |
 | 30 | Branch P&L / cash flow | **Partial (live)** | Operational income − expenses by branch and month, labelled not reconciled |
 | 31 | CEO compensation / partner distributions | Not started | Access model and tests exist (`canReadExecutiveFinance`) |
 | 32 | LAK/THB/USD | **Partial** | Integer-cent maths, rate snapshots in domain lib, original-currency totals, rate-consistency check |

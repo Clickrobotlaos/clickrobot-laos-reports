@@ -272,3 +272,10 @@ export const GrowthInput = z.discriminatedUnion("action", [
   z.object({ action: z.literal("attribute"), leadId: z.string().uuid(), campaignId: z.string().uuid().optional(), referrer: z.string().trim().max(80).optional() }).strict(),
   z.object({ action: z.enum(["approve", "give", "decline"]), leadId: z.string().uuid(), text: optText(200) }).strict(),
 ]);
+
+/** Monthly budget (0022; CEO only, enforced in the database). */
+export const BudgetInput = z.object({
+  branchId: z.string().uuid(), month: z.string().regex(/^\d{4}-\d{2}$/),
+  category: z.enum(["Rent", "Marketing", "Equipment", "Utilities", "Transportation", "Stationery", "Event Cost", "Maintenance", "Other"]),
+  amount: z.number().min(0).max(10_000_000_000),
+}).strict();

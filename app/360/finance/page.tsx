@@ -43,7 +43,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   return (
     <>
       <h1 className="cr-h1">{t.ws_finance}</h1>
-      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/finance/cashbook" style={{ minHeight: 40 }}>📒 {t.cashbook}</a><a className="cr-btn ghost" href="/360/finance/expenses" style={{ minHeight: 40 }}>🧾 {t.expenseRequests}</a></p>
+      <p style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "4px 0 10px" }}><a className="cr-btn ghost" href="/360/finance/cashbook" style={{ minHeight: 40 }}>📒 {t.cashbook}</a><a className="cr-btn ghost" href="/360/finance/expenses" style={{ minHeight: 40 }}>🧾 {t.expenseRequests}</a><a className="cr-btn ghost" href="/360/finance/budgets" style={{ minHeight: 40 }}>🎯 {t.budgets}</a></p>
       <p className="cr-sub">{t.financeSub}</p>
       <div className="cr-banner warn" role="note">{t.notReconciled}</div>
       {err && <div className="cr-banner bad">{t.err_server_error}</div>}

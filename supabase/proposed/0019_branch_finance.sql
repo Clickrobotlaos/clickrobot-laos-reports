@@ -102,6 +102,11 @@ begin
   return v_id;
 end $$;
 
+-- Budget hook: 0022 replaces this with the real budget check. Until then budgets never block.
+create or replace function cr360_authz.over_budget(p_branch uuid, p_category text, p_month date, p_extra_lak numeric) returns boolean
+language sql stable security definer set search_path = '' as $$ select false $$;
+revoke all on function cr360_authz.over_budget(uuid, text, date, numeric) from public, anon, authenticated;
+
 -- p_action: approve | reject | cancel
 create or replace function public.cr360_expense_decide(p_id uuid, p_action text, p_note text default null) returns text
 language plpgsql security definer set search_path = '' as $$
@@ -119,7 +124,9 @@ begin
     if r.status <> 'pending' then raise exception 'already decided' using errcode = '22023'; end if;
     if r.requested_by = auth.uid() then raise exception 'you cannot decide your own request' using errcode = '42501'; end if;
     select value into v_limit from cr360_authz.finance_settings where key = 'manager_expense_limit_lak';
-    if not (v_ceo or (cr360_authz.is_branch_manager(r.branch_id) and r.amount_lak <= coalesce(v_limit, 0))) then
+    if not (v_ceo or (cr360_authz.is_branch_manager(r.branch_id) and r.amount_lak <= coalesce(v_limit, 0)
+                      and (p_action = 'reject' or cr360_authz.over_budget(r.branch_id, r.category,
+                            date_trunc('month', r.created_at at time zone 'Asia/Vientiane')::date, r.amount_lak) is not true))) then
       raise exception 'needs CEO approval' using errcode = '42501';
     end if;
     if p_action = 'reject' and (p_note is null or length(trim(p_note)) < 3) then raise exception 'reason required' using errcode = '22023'; end if;
